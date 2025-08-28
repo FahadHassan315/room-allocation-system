@@ -16,19 +16,62 @@ st.set_page_config(
 def load_rooms():
     """Load rooms from the CSV file in the repository"""
     try:
-        rooms_df = pd.read_csv('rooms.csv')
-        # Assuming the CSV has a column named 'room_name' or similar
-        # Adjust column name based on your CSV structure
+        # Try different encodings to handle various file formats
+        encodings = ['utf-8', 'utf-8-sig', 'latin-1', 'cp1252', 'iso-8859-1']
+        
+        for encoding in encodings:
+            try:
+                rooms_df = pd.read_csv('rooms.csv', encoding=encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            # If all encodings fail, try with error handling
+            rooms_df = pd.read_csv('rooms.csv', encoding='utf-8', errors='ignore')
+        
+        # Clean the dataframe
+        rooms_df = rooms_df.dropna()  # Remove empty rows
+        
+        # Find the room column
         if 'room_name' in rooms_df.columns:
             rooms = rooms_df['room_name'].tolist()
         elif 'Room' in rooms_df.columns:
             rooms = rooms_df['Room'].tolist()
+        elif 'room' in rooms_df.columns:
+            rooms = rooms_df['room'].tolist()
         else:
             # If no specific column name, take the first column
             rooms = rooms_df.iloc[:, 0].tolist()
-        return rooms
+        
+        # Clean room names - remove any non-printable characters
+        cleaned_rooms = []
+        for room in rooms:
+            if pd.notna(room):
+                # Convert to string and clean
+                clean_room = str(room).strip()
+                # Remove any non-ASCII characters that might cause issues
+                clean_room = ''.join(char for char in clean_room if ord(char) < 128)
+                if clean_room:  # Only add non-empty room names
+                    cleaned_rooms.append(clean_room)
+        
+        return cleaned_rooms
+        
     except Exception as e:
         st.error(f"Error loading rooms.csv: {str(e)}")
+        st.info("💡 Try these solutions:")
+        st.markdown("""
+        1. **Re-save your CSV file**:
+           - Open rooms.csv in Excel
+           - Go to File → Save As
+           - Choose "CSV UTF-8 (Comma delimited) (*.csv)"
+           
+        2. **Check file format**:
+           - Ensure first row has header (like 'room_name')
+           - Remove any special characters
+           - Save with simple text editor if needed
+           
+        3. **Upload a new rooms file using the uploader below**
+        """)
         return []
 
 def parse_time_slot(days_str, time_str):
@@ -205,11 +248,44 @@ def main():
     # Load rooms
     rooms_list = load_rooms()
     
+    # Add manual room upload option if automatic loading fails
     if not rooms_list:
-        st.error("❌ Could not load rooms from rooms.csv. Please ensure the file exists in the repository.")
-        st.stop()
-    
-    st.success(f"✅ Loaded {len(rooms_list)} rooms from rooms.csv")
+        st.warning("⚠️ Could not load rooms from rooms.csv automatically.")
+        st.markdown("**Upload your rooms file manually:**")
+        
+        rooms_file = st.file_uploader(
+            "Upload rooms.csv file",
+            type=['csv'],
+            help="Upload a CSV file with room names"
+        )
+        
+        if rooms_file is not None:
+            try:
+                # Try different encodings
+                encodings = ['utf-8', 'utf-8-sig', 'latin-1', 'cp1252']
+                
+                for encoding in encodings:
+                    try:
+                        rooms_df = pd.read_csv(rooms_file, encoding=encoding)
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    rooms_df = pd.read_csv(rooms_file, encoding='utf-8', errors='ignore')
+                
+                # Get room names from first column
+                rooms_list = rooms_df.iloc[:, 0].dropna().tolist()
+                rooms_list = [str(room).strip() for room in rooms_list if str(room).strip()]
+                
+                st.success(f"✅ Loaded {len(rooms_list)} rooms from uploaded file")
+                
+            except Exception as e:
+                st.error(f"Error reading rooms file: {str(e)}")
+                st.stop()
+        else:
+            st.stop()
+    else:
+        st.success(f"✅ Loaded {len(rooms_list)} rooms from rooms.csv")
     
     # Show room categories
     lab_rooms = [room for room in rooms_list if 'ITLAB' in str(room).upper() or 'ITROOM' in str(room).upper()]
