@@ -461,9 +461,9 @@ def main():
                     if len(combined_df) > 10:
                         st.write(f"... and {len(combined_df) - 10} more courses from all catalogs")
                 
-                # Show breakdown by catalog
+                # Show breakdown by catalog - FIXED LINE
                 with st.expander("📊 Breakdown by Catalog"):
-                    breakdown = combined_df.groupby('source_file').size().reset_index(columns=['courses'])
+                    breakdown = combined_df.groupby('source_file').size().reset_index(name='courses')
                     breakdown.columns = ['Catalog File', 'Number of Courses']
                     st.dataframe(breakdown)
                 
@@ -498,28 +498,45 @@ def main():
                     # Allocation by catalog
                     st.markdown("### 📈 Allocation Summary by Catalog")
                     catalog_summary = []
-                    for file_name in result_df['source_file'].unique():
-                        catalog_data = result_df[result_df['source_file'] == file_name]
-                        allocated = len(catalog_data[~catalog_data['allocated_room'].isin(['ROOM REQUIRED', 'INVALID TIME SLOT'])])
-                        required = len(catalog_data[catalog_data['allocated_room'] == 'ROOM REQUIRED'])
-                        
-                        catalog_summary.append({
-                            'Catalog': file_name,
-                            'Total Courses': len(catalog_data),
-                            'Rooms Allocated': allocated,
-                            'Rooms Required': required,
-                            'Success Rate': f"{(allocated/len(catalog_data)*100):.1f}%" if len(catalog_data) > 0 else "0%"
-                        })
                     
-                    catalog_summary_df = pd.DataFrame(catalog_summary)
-                    st.dataframe(catalog_summary_df, use_container_width=True)
+                    # Add source_file column to result_df if not present
+                    if 'source_file' not in result_df.columns:
+                        # Try to match back to original files based on order
+                        result_df['source_file'] = 'Unknown'
+                        current_idx = 0
+                        for info in file_info:
+                            if '✅' in info['status']:
+                                result_df.iloc[current_idx:current_idx + info['courses'], result_df.columns.get_loc('source_file')] = info['file']
+                                current_idx += info['courses']
+                    
+                    for file_name in result_df['source_file'].unique():
+                        if file_name != 'Unknown':  # Skip if we couldn't match files
+                            catalog_data = result_df[result_df['source_file'] == file_name]
+                            allocated = len(catalog_data[~catalog_data['allocated_room'].isin(['ROOM REQUIRED', 'INVALID TIME SLOT'])])
+                            required = len(catalog_data[catalog_data['allocated_room'] == 'ROOM REQUIRED'])
+                            
+                            catalog_summary.append({
+                                'Catalog': file_name,
+                                'Total Courses': len(catalog_data),
+                                'Rooms Allocated': allocated,
+                                'Rooms Required': required,
+                                'Success Rate': f"{(allocated/len(catalog_data)*100):.1f}%" if len(catalog_data) > 0 else "0%"
+                            })
+                    
+                    if catalog_summary:
+                        catalog_summary_df = pd.DataFrame(catalog_summary)
+                        st.dataframe(catalog_summary_df, use_container_width=True)
                     
                     # Show results table with file source
                     st.markdown("### 📋 Detailed Allocation (All Catalogs)")
                     
                     # Create display dataframe with source file
-                    display_df = result_df[['source_file', 'program', 'section', 'course_code', 'course_title', 
-                                          'faculty', 'days', 'times', 'students', 'allocated_room']].copy()
+                    display_columns = ['program', 'section', 'course_code', 'course_title', 
+                                     'faculty', 'days', 'times', 'students', 'allocated_room']
+                    if 'source_file' in result_df.columns:
+                        display_columns.insert(0, 'source_file')
+                    
+                    display_df = result_df[display_columns].copy()
                     
                     # Color code the rooms
                     def highlight_rooms(val):
