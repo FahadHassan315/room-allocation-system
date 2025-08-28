@@ -4,6 +4,7 @@ import numpy as np
 from datetime import datetime
 import re
 import io
+import random
 
 # Page configuration
 st.set_page_config(
@@ -169,7 +170,7 @@ def has_time_conflict(slot1, slot2):
                 slot2['end_time'] <= slot1['start_time'])
 
 def allocate_rooms(courses_df, rooms_list):
-    """Main room allocation function - maintains original order"""
+    """Main room allocation function - maintains original order with randomized room selection"""
     # Create a copy of the dataframe to preserve original order
     df = courses_df.copy().reset_index(drop=True)
     
@@ -185,6 +186,12 @@ def allocate_rooms(courses_df, rooms_list):
     # Separate lab and regular rooms
     lab_rooms = [room for room in rooms_list if is_lab_room(room)]
     regular_rooms = [room for room in rooms_list if not is_lab_room(room)]
+    
+    # Randomize room order to avoid same sections getting same rooms
+    lab_rooms_shuffled = lab_rooms.copy()
+    regular_rooms_shuffled = regular_rooms.copy()
+    random.shuffle(lab_rooms_shuffled)
+    random.shuffle(regular_rooms_shuffled)
     
     # Track room assignments by time slot
     room_schedule = {room: [] for room in rooms_list}
@@ -216,11 +223,13 @@ def allocate_rooms(courses_df, rooms_list):
             allocated_courses.append(course_dict)
             continue
         
-        # Determine room preference
+        # Determine room preference with randomized lists
         if needs_lab_room(course_code):
-            preferred_rooms = lab_rooms + regular_rooms  # Try labs first
+            # For lab courses: try randomized lab rooms first, then randomized regular rooms
+            preferred_rooms = lab_rooms_shuffled + regular_rooms_shuffled
         else:
-            preferred_rooms = regular_rooms + lab_rooms  # Try regular rooms first
+            # For regular courses: try randomized regular rooms first, then randomized lab rooms
+            preferred_rooms = regular_rooms_shuffled + lab_rooms_shuffled
         
         # Try to allocate a room
         room_allocated = False
@@ -245,6 +254,12 @@ def allocate_rooms(courses_df, rooms_list):
             rooms_required_count += 1
         
         allocated_courses.append(course_dict)
+        
+        # Re-shuffle room lists periodically to ensure more randomization
+        # This prevents sections from clustering in similar rooms
+        if index % 5 == 0:  # Re-shuffle every 5 courses
+            random.shuffle(lab_rooms_shuffled)
+            random.shuffle(regular_rooms_shuffled)
     
     return pd.DataFrame(allocated_courses), rooms_required_count
 
@@ -344,6 +359,9 @@ def main():
             # Process allocation
             if st.button("🎯 Allocate Rooms", type="primary"):
                 with st.spinner("Processing room allocation..."):
+                    # Set random seed for reproducible results (optional - remove this line for completely random each time)
+                    # random.seed(42)
+                    
                     result_df, rooms_needed = allocate_rooms(df, rooms_list)
                 
                 # Display results
