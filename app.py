@@ -382,104 +382,185 @@ def main():
                 if len(regular_rooms) > 15:
                     st.write(f"... and {len(regular_rooms) - 15} more")
     
-    # File upload
+    # File upload - Multiple files support
     st.markdown("---")
-    st.subheader("📁 Upload Course Schedule")
+    st.subheader("📁 Upload Course Schedules")
+    st.markdown("**Upload multiple catalog files (they will be combined automatically)**")
     
-    uploaded_file = st.file_uploader(
-        "Choose an Excel or CSV file",
+    uploaded_files = st.file_uploader(
+        "Choose Excel or CSV files",
         type=['xlsx', 'xls', 'csv'],
-        help="Upload your course schedule file"
+        accept_multiple_files=True,
+        help="Upload multiple catalog files - they will be combined into one schedule"
     )
     
-    if uploaded_file is not None:
+    if uploaded_files:
         try:
-            # Read the file
-            if uploaded_file.name.endswith('.csv'):
-                df = pd.read_csv(uploaded_file)
-            else:
-                df = pd.read_excel(uploaded_file)
+            combined_df = pd.DataFrame()
+            file_info = []
             
-            st.success(f"✅ File uploaded successfully! Found {len(df)} courses.")
-            
-            # Show preview
-            with st.expander("📋 Preview uploaded data"):
-                st.dataframe(df.head())
-            
-            # Process allocation
-            if st.button("🎯 Allocate Rooms", type="primary"):
-                with st.spinner("Processing room allocation..."):
-                    # Set random seed for reproducible results (optional - remove this line for completely random each time)
-                    # random.seed(42)
+            # Process each uploaded file
+            for i, uploaded_file in enumerate(uploaded_files, 1):
+                try:
+                    # Read the file
+                    if uploaded_file.name.endswith('.csv'):
+                        df = pd.read_csv(uploaded_file)
+                    else:
+                        df = pd.read_excel(uploaded_file)
                     
-                    result_df, rooms_needed = allocate_rooms(df, rooms_list)
+                    # Add file source information
+                    df['source_file'] = uploaded_file.name
+                    df['file_number'] = i
+                    
+                    # Combine with previous data
+                    combined_df = pd.concat([combined_df, df], ignore_index=True)
+                    
+                    file_info.append({
+                        'file': uploaded_file.name,
+                        'courses': len(df),
+                        'status': '✅ Success'
+                    })
+                    
+                except Exception as e:
+                    file_info.append({
+                        'file': uploaded_file.name,
+                        'courses': 0,
+                        'status': f'❌ Error: {str(e)}'
+                    })
+                    st.error(f"Error reading {uploaded_file.name}: {str(e)}")
+            
+            # Show file processing summary
+            if file_info:
+                st.markdown("### 📊 File Processing Summary")
                 
-                # Display results
-                st.markdown("---")
-                st.subheader("📊 Allocation Results")
-                
-                # Statistics
-                col1, col2, col3, col4 = st.columns(4)
-                
+                col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("Total Courses", len(result_df))
+                    successful_files = len([f for f in file_info if '✅' in f['status']])
+                    st.metric("Files Processed", f"{successful_files}/{len(uploaded_files)}")
                 
                 with col2:
-                    allocated_count = len(result_df[~result_df['allocated_room'].isin(['ROOM REQUIRED', 'INVALID TIME SLOT'])])
-                    st.metric("Rooms Allocated", allocated_count)
+                    total_courses = sum([f['courses'] for f in file_info])
+                    st.metric("Total Courses", total_courses)
                 
                 with col3:
-                    st.metric("Rooms Required", rooms_needed, delta=f"{rooms_needed} additional" if rooms_needed > 0 else None)
+                    catalogs = len(uploaded_files)
+                    st.metric("Catalogs Combined", catalogs)
                 
-                with col4:
-                    lab_allocated = len(result_df[
-                        result_df['allocated_room'].apply(lambda x: is_lab_room(str(x)))
-                    ])
-                    st.metric("Lab Rooms Used", lab_allocated)
+                # Detailed file info
+                with st.expander("📋 Detailed File Information"):
+                    for info in file_info:
+                        st.write(f"**{info['file']}**: {info['courses']} courses - {info['status']}")
+            
+            if len(combined_df) > 0:
+                st.success(f"✅ Successfully combined {len(uploaded_files)} files into {len(combined_df)} total courses!")
                 
-                # Show results table in original order
-                st.markdown("### 📋 Detailed Allocation")
+                # Show preview with source file information
+                with st.expander("📋 Preview combined data"):
+                    preview_df = combined_df[['source_file', 'program', 'course_code', 'course_title', 'days', "time's"]].head(10)
+                    st.dataframe(preview_df)
+                    if len(combined_df) > 10:
+                        st.write(f"... and {len(combined_df) - 10} more courses from all catalogs")
                 
-                # Create display dataframe
-                display_df = result_df[['program', 'section', 'course_code', 'course_title', 
-                                      'faculty', 'days', 'times', 'students', 'allocated_room']].copy()
+                # Show breakdown by catalog
+                with st.expander("📊 Breakdown by Catalog"):
+                    breakdown = combined_df.groupby('source_file').size().reset_index(columns=['courses'])
+                    breakdown.columns = ['Catalog File', 'Number of Courses']
+                    st.dataframe(breakdown)
                 
-                # Color code the rooms
-                def highlight_rooms(val):
-                    if 'ROOM REQUIRED' in str(val):
-                        return 'background-color: #ffebee; color: #c62828'
-                    elif 'INVALID' in str(val):
-                        return 'background-color: #fff3e0; color: #ef6c00'
-                    elif is_lab_room(str(val)):
-                        return 'background-color: #e8f5e8; color: #2e7d32'
-                    else:
-                        return 'background-color: #f3e5f5; color: #7b1fa2'
-                
-                # Apply styling and display
-                styled_df = display_df.style.map(highlight_rooms, subset=['allocated_room'])
-                st.dataframe(styled_df, use_container_width=True)
-                
-                # Download button
-                csv = result_df.to_csv(index=False)
-                st.download_button(
-                    label="📥 Download Allocation Results (CSV)",
-                    data=csv,
-                    file_name=f"room_allocation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv"
-                )
-                
-                # Show conflicts summary
-                if rooms_needed > 0:
-                    st.warning(f"⚠️ {rooms_needed} additional rooms are needed. Consider:")
-                    st.markdown("""
-                    - Adding more time slots
-                    - Using additional rooms
-                    - Splitting large classes
-                    - Scheduling some courses online
-                    """)
+                # Process allocation
+                if st.button("🎯 Allocate Rooms for All Catalogs", type="primary"):
+                    with st.spinner("Processing room allocation for combined catalogs..."):
+                        result_df, rooms_needed = allocate_rooms(combined_df, rooms_list)
+                    
+                    # Display results
+                    st.markdown("---")
+                    st.subheader("📊 Allocation Results (All Catalogs Combined)")
+                    
+                    # Statistics
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric("Total Courses", len(result_df))
+                    
+                    with col2:
+                        allocated_count = len(result_df[~result_df['allocated_room'].isin(['ROOM REQUIRED', 'INVALID TIME SLOT'])])
+                        st.metric("Rooms Allocated", allocated_count)
+                    
+                    with col3:
+                        st.metric("Rooms Required", rooms_needed, delta=f"{rooms_needed} additional" if rooms_needed > 0 else None)
+                    
+                    with col4:
+                        lab_allocated = len(result_df[
+                            result_df['allocated_room'].apply(lambda x: is_lab_room(str(x)))
+                        ])
+                        st.metric("Lab Rooms Used", lab_allocated)
+                    
+                    # Allocation by catalog
+                    st.markdown("### 📈 Allocation Summary by Catalog")
+                    catalog_summary = []
+                    for file_name in result_df['source_file'].unique():
+                        catalog_data = result_df[result_df['source_file'] == file_name]
+                        allocated = len(catalog_data[~catalog_data['allocated_room'].isin(['ROOM REQUIRED', 'INVALID TIME SLOT'])])
+                        required = len(catalog_data[catalog_data['allocated_room'] == 'ROOM REQUIRED'])
+                        
+                        catalog_summary.append({
+                            'Catalog': file_name,
+                            'Total Courses': len(catalog_data),
+                            'Rooms Allocated': allocated,
+                            'Rooms Required': required,
+                            'Success Rate': f"{(allocated/len(catalog_data)*100):.1f}%" if len(catalog_data) > 0 else "0%"
+                        })
+                    
+                    catalog_summary_df = pd.DataFrame(catalog_summary)
+                    st.dataframe(catalog_summary_df, use_container_width=True)
+                    
+                    # Show results table with file source
+                    st.markdown("### 📋 Detailed Allocation (All Catalogs)")
+                    
+                    # Create display dataframe with source file
+                    display_df = result_df[['source_file', 'program', 'section', 'course_code', 'course_title', 
+                                          'faculty', 'days', 'times', 'students', 'allocated_room']].copy()
+                    
+                    # Color code the rooms
+                    def highlight_rooms(val):
+                        if 'ROOM REQUIRED' in str(val):
+                            return 'background-color: #ffebee; color: #c62828'
+                        elif 'INVALID' in str(val):
+                            return 'background-color: #fff3e0; color: #ef6c00'
+                        elif is_lab_room(str(val)):
+                            return 'background-color: #e8f5e8; color: #2e7d32'
+                        else:
+                            return 'background-color: #f3e5f5; color: #7b1fa2'
+                    
+                    # Apply styling and display
+                    styled_df = display_df.style.map(highlight_rooms, subset=['allocated_room'])
+                    st.dataframe(styled_df, use_container_width=True)
+                    
+                    # Download button
+                    csv = result_df.to_csv(index=False)
+                    st.download_button(
+                        label="📥 Download Combined Allocation Results (CSV)",
+                        data=csv,
+                        file_name=f"combined_room_allocation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv"
+                    )
+                    
+                    # Show conflicts summary
+                    if rooms_needed > 0:
+                        st.warning(f"⚠️ {rooms_needed} additional rooms are needed across all catalogs. Consider:")
+                        st.markdown("""
+                        - Adding more time slots
+                        - Using additional rooms  
+                        - Splitting large classes
+                        - Scheduling some courses online
+                        - Staggering catalog schedules if possible
+                        """)
+            
+            else:
+                st.error("❌ No valid data found in uploaded files.")
         
         except Exception as e:
-            st.error(f"❌ Error processing file: {str(e)}")
+            st.error(f"❌ Error processing files: {str(e)}")
     
     # Instructions with sample data
     with st.expander("📖 How to use this application"):
@@ -487,15 +568,23 @@ def main():
         ### Step-by-step guide:
         
         1. **Ensure rooms.csv exists** in the repository with your room list
-        2. **Upload your course schedule** (Excel or CSV format)
-        3. **Click 'Allocate Rooms'** to process the allocation
-        4. **Download the results** as CSV
+        2. **Upload multiple catalog files** (Excel or CSV format) - they will be combined automatically
+        3. **Review the combined data** and file processing summary
+        4. **Click 'Allocate Rooms for All Catalogs'** to process the allocation
+        5. **Download the combined results** as CSV
         
-        ### Expected File Format:
+        ### Multi-File Upload:
+        - Upload **4-5 catalog files** at once
+        - System **automatically combines** all files into one dataset
+        - Shows **breakdown by catalog** for easy tracking
+        - **Preserves source file information** in results
+        - **Conflict detection works across all catalogs** (prevents room double-booking)
+        
+        ### Expected File Format (Each Catalog):
         
         Your course schedule should have these columns (exact names):
         ```
-        program | section | course_code | course_title | name | ids | type | name | days | time's | failed/withdrawn students | active students | total student strength | required sections
+        program | section | course_code | course_title | name | days | time's | total student strength
         ```
         
         ### Sample Data Format:
