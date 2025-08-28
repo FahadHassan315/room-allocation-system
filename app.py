@@ -8,7 +8,7 @@ import random
 
 # Page configuration
 st.set_page_config(
-    page_title="Room Allocation System",
+    page_title="Hafali Smart Allocation System",
     page_icon="🏫",
     layout="wide"
 )
@@ -307,7 +307,7 @@ def allocate_rooms(courses_df, rooms_list):
     return pd.DataFrame(allocated_courses), rooms_required_count
 
 def main():
-    st.title("🏫 Room Allocation System")
+    st.title("🏫 Hafali Smart Allocation System")
     st.markdown("Upload your course schedule and automatically allocate rooms")
     
     # Load rooms
