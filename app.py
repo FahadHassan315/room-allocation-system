@@ -140,7 +140,7 @@ def parse_time_slot(days_str, time_str):
     }
 
 def needs_lab_room(course_code):
-    """Check if course needs IT lab/room"""
+    """Check if course needs IT lab/room - only MIS, CSC, BDS, SEC"""
     if pd.isna(course_code):
         return False
     
@@ -148,6 +148,11 @@ def needs_lab_room(course_code):
     lab_prefixes = ['MIS', 'CSC', 'BDS', 'SEC']
     
     return any(course_code.startswith(prefix) for prefix in lab_prefixes)
+
+def is_lab_room(room_name):
+    """Check if room is an IT lab or IT room"""
+    room_str = str(room_name).upper()
+    return 'IT LAB' in room_str or 'ITROOM' in room_str or 'IT_LAB' in room_str or 'IT_ROOM' in room_str
 
 def has_time_conflict(slot1, slot2):
     """Check if two time slots conflict"""
@@ -164,82 +169,84 @@ def has_time_conflict(slot1, slot2):
                 slot2['end_time'] <= slot1['start_time'])
 
 def allocate_rooms(courses_df, rooms_list):
-    """Main room allocation function"""
-    # Create a copy of the dataframe
-    df = courses_df.copy()
+    """Main room allocation function - maintains original order"""
+    # Create a copy of the dataframe to preserve original order
+    df = courses_df.copy().reset_index(drop=True)
     
     # Parse time slots for all courses
     df['parsed_time_slot'] = df.apply(
-        lambda row: parse_time_slot(row.get('days', ''), row.get('times', row.get('time', ''))), 
+        lambda row: parse_time_slot(
+            row.get('days', row.get('Days', '')), 
+            row.get("time's", row.get('times', row.get('time', '')))
+        ), 
         axis=1
     )
     
-    # Filter out courses with invalid time slots
-    valid_courses = df[df['parsed_time_slot'].notna()].copy()
-    invalid_courses = df[df['parsed_time_slot'].isna()].copy()
-    
     # Separate lab and regular rooms
-    lab_rooms = [room for room in rooms_list if 'ITLAB' in str(room).upper() or 'ITROOM' in str(room).upper()]
-    regular_rooms = [room for room in rooms_list if room not in lab_rooms]
+    lab_rooms = [room for room in rooms_list if is_lab_room(room)]
+    regular_rooms = [room for room in rooms_list if not is_lab_room(room)]
     
-    # Track room assignments
+    # Track room assignments by time slot
     room_schedule = {room: [] for room in rooms_list}
+    
+    # Process courses in original order (no grouping)
     allocated_courses = []
-    unallocated_courses = []
+    rooms_required_count = 0
     
-    # Sort courses: lab courses first, then by time
-    def sort_key(row):
-        needs_lab = needs_lab_room(row.get('course_code', ''))
-        start_time = row['parsed_time_slot']['start_time'] if row['parsed_time_slot'] else 999999
-        return (0 if needs_lab else 1, start_time)
-    
-    valid_courses = valid_courses.iloc[valid_courses.apply(sort_key, axis=1).argsort()]
-    
-    # Allocate rooms
-    for _, course in valid_courses.iterrows():
-        allocated = False
+    for index, course in df.iterrows():
         time_slot = course['parsed_time_slot']
-        course_code = course.get('course_code', '')
+        course_code = course.get('course_code', course.get('Course Code', ''))
         
-        # Determine which rooms to try first
+        # Create course dictionary
+        course_dict = {
+            'program': course.get('program', course.get('Program', '')),
+            'section': course.get('section', course.get('Section', '')),
+            'course_code': course_code,
+            'course_title': course.get('course_title', course.get('Course Title', '')),
+            'faculty': course.get('name', course.get('Faculty', course.get('Name', ''))),
+            'days': course.get('days', course.get('Days', '')),
+            'times': course.get("time's", course.get('times', course.get('Time', ''))),
+            'students': course.get('total student strength', course.get('Students', 0)),
+            'allocated_room': None
+        }
+        
+        # Skip courses with invalid time slots
+        if not time_slot:
+            course_dict['allocated_room'] = 'INVALID TIME SLOT'
+            allocated_courses.append(course_dict)
+            continue
+        
+        # Determine room preference
         if needs_lab_room(course_code):
-            preferred_rooms = lab_rooms + regular_rooms
+            preferred_rooms = lab_rooms + regular_rooms  # Try labs first
         else:
-            preferred_rooms = regular_rooms + lab_rooms
+            preferred_rooms = regular_rooms + lab_rooms  # Try regular rooms first
         
         # Try to allocate a room
+        room_allocated = False
+        
         for room in preferred_rooms:
-            # Check for conflicts with existing allocations
+            # Check for time conflicts
             has_conflict = False
-            for existing_course in room_schedule[room]:
-                if has_time_conflict(time_slot, existing_course['parsed_time_slot']):
+            for existing_slot in room_schedule[room]:
+                if has_time_conflict(time_slot, existing_slot):
                     has_conflict = True
                     break
             
             if not has_conflict:
                 # Allocate this room
-                course_dict = course.to_dict()
                 course_dict['allocated_room'] = room
-                room_schedule[room].append(course_dict)
-                allocated_courses.append(course_dict)
-                allocated = True
+                room_schedule[room].append(time_slot)
+                room_allocated = True
                 break
         
-        if not allocated:
-            course_dict = course.to_dict()
+        if not room_allocated:
             course_dict['allocated_room'] = 'ROOM REQUIRED'
-            unallocated_courses.append(course_dict)
+            rooms_required_count += 1
+        
+        allocated_courses.append(course_dict)
     
-    # Handle invalid time slot courses
-    for _, course in invalid_courses.iterrows():
-        course_dict = course.to_dict()
-        course_dict['allocated_room'] = 'INVALID TIME SLOT'
-        unallocated_courses.append(course_dict)
-    
-    # Combine all results
-    all_results = allocated_courses + unallocated_courses
-    
-    return pd.DataFrame(all_results), len(unallocated_courses)
+    return pd.DataFrame(allocated_courses), rooms_required_count
 
 def main():
     st.title("🏫 Room Allocation System")
@@ -288,14 +295,27 @@ def main():
         st.success(f"✅ Loaded {len(rooms_list)} rooms from rooms.csv")
     
     # Show room categories
-    lab_rooms = [room for room in rooms_list if 'ITLAB' in str(room).upper() or 'ITROOM' in str(room).upper()]
-    regular_rooms = [room for room in rooms_list if room not in lab_rooms]
+    lab_rooms = [room for room in rooms_list if is_lab_room(room)]
+    regular_rooms = [room for room in rooms_list if not is_lab_room(room)]
     
     col1, col2 = st.columns(2)
     with col1:
         st.info(f"🖥️ **IT Labs/Rooms:** {len(lab_rooms)}")
+        if lab_rooms:
+            with st.expander("View IT Labs/Rooms"):
+                for room in lab_rooms[:10]:  # Show first 10
+                    st.write(f"• {room}")
+                if len(lab_rooms) > 10:
+                    st.write(f"... and {len(lab_rooms) - 10} more")
+    
     with col2:
         st.info(f"🏛️ **Regular Rooms:** {len(regular_rooms)}")
+        if regular_rooms:
+            with st.expander("View Regular Rooms"):
+                for room in regular_rooms[:10]:  # Show first 10
+                    st.write(f"• {room}")
+                if len(regular_rooms) > 10:
+                    st.write(f"... and {len(regular_rooms) - 10} more")
     
     # File upload
     st.markdown("---")
@@ -321,52 +341,10 @@ def main():
             with st.expander("📋 Preview uploaded data"):
                 st.dataframe(df.head())
             
-            # Column mapping
-            st.markdown("---")
-            st.subheader("🗂️ Column Mapping")
-            
-            columns = df.columns.tolist()
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                program_col = st.selectbox("Program Column", columns, 
-                                         index=next((i for i, col in enumerate(columns) if 'program' in col.lower()), 0))
-                course_code_col = st.selectbox("Course Code Column", columns,
-                                             index=next((i for i, col in enumerate(columns) if 'course' in col.lower() and 'code' in col.lower()), 1))
-                course_title_col = st.selectbox("Course Title Column", columns,
-                                              index=next((i for i, col in enumerate(columns) if 'title' in col.lower()), 2))
-            
-            with col2:
-                faculty_col = st.selectbox("Faculty Column", columns,
-                                         index=next((i for i, col in enumerate(columns) if 'faculty' in col.lower() or 'name' in col.lower()), 3))
-                days_col = st.selectbox("Days Column", columns,
-                                      index=next((i for i, col in enumerate(columns) if 'day' in col.lower()), 4))
-                time_col = st.selectbox("Time Column", columns,
-                                      index=next((i for i, col in enumerate(columns) if 'time' in col.lower()), 5))
-            
-            with col3:
-                section_col = st.selectbox("Section Column", columns,
-                                         index=next((i for i, col in enumerate(columns) if 'section' in col.lower()), 0))
-                students_col = st.selectbox("Students Column", columns,
-                                          index=next((i for i, col in enumerate(columns) if 'student' in col.lower()), -1))
-            
-            # Rename columns for processing
-            df_processed = df.rename(columns={
-                program_col: 'program',
-                course_code_col: 'course_code', 
-                course_title_col: 'course_title',
-                faculty_col: 'faculty',
-                days_col: 'days',
-                time_col: 'times',
-                section_col: 'section',
-                students_col: 'students'
-            })
-            
             # Process allocation
             if st.button("🎯 Allocate Rooms", type="primary"):
                 with st.spinner("Processing room allocation..."):
-                    result_df, rooms_needed = allocate_rooms(df_processed, rooms_list)
+                    result_df, rooms_needed = allocate_rooms(df, rooms_list)
                 
                 # Display results
                 st.markdown("---")
@@ -387,11 +365,11 @@ def main():
                 
                 with col4:
                     lab_allocated = len(result_df[
-                        result_df['allocated_room'].apply(lambda x: 'ITLAB' in str(x).upper() or 'ITROOM' in str(x).upper())
+                        result_df['allocated_room'].apply(lambda x: is_lab_room(str(x)))
                     ])
                     st.metric("Lab Rooms Used", lab_allocated)
                 
-                # Show results table
+                # Show results table in original order
                 st.markdown("### 📋 Detailed Allocation")
                 
                 # Create display dataframe
@@ -399,17 +377,18 @@ def main():
                                       'faculty', 'days', 'times', 'students', 'allocated_room']].copy()
                 
                 # Color code the rooms
-                def color_room(val):
+                def highlight_rooms(val):
                     if 'ROOM REQUIRED' in str(val):
                         return 'background-color: #ffebee; color: #c62828'
                     elif 'INVALID' in str(val):
                         return 'background-color: #fff3e0; color: #ef6c00'
-                    elif 'ITLAB' in str(val).upper() or 'ITROOM' in str(val).upper():
+                    elif is_lab_room(str(val)):
                         return 'background-color: #e8f5e8; color: #2e7d32'
                     else:
                         return 'background-color: #f3e5f5; color: #7b1fa2'
                 
-                styled_df = display_df.style.applymap(color_room, subset=['allocated_room'])
+                # Apply styling and display
+                styled_df = display_df.style.map(highlight_rooms, subset=['allocated_room'])
                 st.dataframe(styled_df, use_container_width=True)
                 
                 # Download button
@@ -434,22 +413,49 @@ def main():
         except Exception as e:
             st.error(f"❌ Error processing file: {str(e)}")
     
-    # Instructions
+    # Instructions with sample data
     with st.expander("📖 How to use this application"):
         st.markdown("""
         ### Step-by-step guide:
         
         1. **Ensure rooms.csv exists** in the repository with your room list
         2. **Upload your course schedule** (Excel or CSV format)
-        3. **Map the columns** to match your data structure
-        4. **Click 'Allocate Rooms'** to process the allocation
-        5. **Download the results** as CSV
+        3. **Click 'Allocate Rooms'** to process the allocation
+        4. **Download the results** as CSV
+        
+        ### Expected File Format:
+        
+        Your course schedule should have these columns (exact names):
+        ```
+        program | section | course_code | course_title | name | ids | type | name | days | time's | failed/withdrawn students | active students | total student strength | required sections
+        ```
+        
+        ### Sample Data Format:
+        ```
+        program: BBA
+        section: 1
+        course_code: MAN405
+        course_title: Strategic Management
+        name: Faculty Member
+        days: Tuesday / Thursday
+        time's: 10:45 AM - 12:15 PM
+        total student strength: 25
+        ```
+        
+        ### Room Format Examples:
+        ```
+        IT LAB # 7
+        ITROOM  301
+        CBM101
+        CBM103
+        ```
         
         ### Important notes:
         - Courses starting with **MIS, CSC, BDS, SEC** will be prioritized for IT labs/rooms
         - Time conflicts are automatically detected and prevented
         - Invalid time formats will be marked as "INVALID TIME SLOT"
         - When rooms are insufficient, courses will be marked as "ROOM REQUIRED"
+        - Results maintain the same order as your uploaded file
         """)
 
 if __name__ == "__main__":
