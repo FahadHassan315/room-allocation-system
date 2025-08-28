@@ -169,8 +169,48 @@ def has_time_conflict(slot1, slot2):
     return not (slot1['end_time'] <= slot2['start_time'] or 
                 slot2['end_time'] <= slot1['start_time'])
 
+def get_room_priority_group(room_name):
+    """Determine room priority group based on room name"""
+    room_str = str(room_name).upper()
+    
+    if 'CBM' in room_str:
+        return 1  # Highest priority
+    elif 'SSK' in room_str:
+        return 2
+    elif 'I.MGMT' in room_str or 'IMGMT' in room_str:
+        return 3
+    elif 'CREEK' in room_str or 'CRK' in room_str:
+        return 4
+    elif 'CHS' in room_str:
+        return 5  # Lowest priority
+    else:
+        return 6  # Unknown rooms get lowest priority
+
+def distribute_rooms_by_priority(rooms_list, exclude_allocated=None):
+    """Distribute rooms by priority groups with randomization within each group"""
+    if exclude_allocated is None:
+        exclude_allocated = set()
+    
+    # Group rooms by priority
+    priority_groups = {}
+    for room in rooms_list:
+        if room not in exclude_allocated:
+            priority = get_room_priority_group(room)
+            if priority not in priority_groups:
+                priority_groups[priority] = []
+            priority_groups[priority].append(room)
+    
+    # Randomize within each priority group and combine
+    final_room_order = []
+    for priority in sorted(priority_groups.keys()):
+        group_rooms = priority_groups[priority].copy()
+        random.shuffle(group_rooms)  # Randomize within the priority group
+        final_room_order.extend(group_rooms)
+    
+    return final_room_order
+
 def allocate_rooms(courses_df, rooms_list):
-    """Main room allocation function - maintains original order with randomized room selection"""
+    """Main room allocation function with priority-based room distribution"""
     # Create a copy of the dataframe to preserve original order
     df = courses_df.copy().reset_index(drop=True)
     
@@ -187,14 +227,12 @@ def allocate_rooms(courses_df, rooms_list):
     lab_rooms = [room for room in rooms_list if is_lab_room(room)]
     regular_rooms = [room for room in rooms_list if not is_lab_room(room)]
     
-    # Randomize room order to avoid same sections getting same rooms
-    lab_rooms_shuffled = lab_rooms.copy()
-    regular_rooms_shuffled = regular_rooms.copy()
-    random.shuffle(lab_rooms_shuffled)
-    random.shuffle(regular_rooms_shuffled)
-    
     # Track room assignments by time slot
     room_schedule = {room: [] for room in rooms_list}
+    
+    # Track which rooms have been recently allocated to encourage variety
+    recently_allocated = set()
+    allocation_counter = 0
     
     # Process courses in original order (no grouping)
     allocated_courses = []
@@ -223,13 +261,17 @@ def allocate_rooms(courses_df, rooms_list):
             allocated_courses.append(course_dict)
             continue
         
-        # Determine room preference with randomized lists
+        # Get prioritized room list with variety
         if needs_lab_room(course_code):
-            # For lab courses: try randomized lab rooms first, then randomized regular rooms
-            preferred_rooms = lab_rooms_shuffled + regular_rooms_shuffled
+            # For lab courses: prioritized labs first, then prioritized regular rooms
+            lab_rooms_prioritized = distribute_rooms_by_priority(lab_rooms, recently_allocated)
+            regular_rooms_prioritized = distribute_rooms_by_priority(regular_rooms, recently_allocated)
+            preferred_rooms = lab_rooms_prioritized + regular_rooms_prioritized
         else:
-            # For regular courses: try randomized regular rooms first, then randomized lab rooms
-            preferred_rooms = regular_rooms_shuffled + lab_rooms_shuffled
+            # For regular courses: prioritized regular rooms first, then prioritized labs
+            regular_rooms_prioritized = distribute_rooms_by_priority(regular_rooms, recently_allocated)
+            lab_rooms_prioritized = distribute_rooms_by_priority(lab_rooms, recently_allocated)
+            preferred_rooms = regular_rooms_prioritized + lab_rooms_prioritized
         
         # Try to allocate a room
         room_allocated = False
@@ -246,7 +288,9 @@ def allocate_rooms(courses_df, rooms_list):
                 # Allocate this room
                 course_dict['allocated_room'] = room
                 room_schedule[room].append(time_slot)
+                recently_allocated.add(room)
                 room_allocated = True
+                allocation_counter += 1
                 break
         
         if not room_allocated:
@@ -255,11 +299,10 @@ def allocate_rooms(courses_df, rooms_list):
         
         allocated_courses.append(course_dict)
         
-        # Re-shuffle room lists periodically to ensure more randomization
-        # This prevents sections from clustering in similar rooms
-        if index % 5 == 0:  # Re-shuffle every 5 courses
-            random.shuffle(lab_rooms_shuffled)
-            random.shuffle(regular_rooms_shuffled)
+        # Clear recently allocated set every 8 courses to allow room reuse
+        # but encourage variety within small batches
+        if allocation_counter % 8 == 0:
+            recently_allocated.clear()
     
     return pd.DataFrame(allocated_courses), rooms_required_count
 
@@ -309,7 +352,7 @@ def main():
     else:
         st.success(f"✅ Loaded {len(rooms_list)} rooms from rooms.csv")
     
-    # Show room categories
+    # Show room categories with priority explanation
     lab_rooms = [room for room in rooms_list if is_lab_room(room)]
     regular_rooms = [room for room in rooms_list if not is_lab_room(room)]
     
@@ -326,11 +369,18 @@ def main():
     with col2:
         st.info(f"🏛️ **Regular Rooms:** {len(regular_rooms)}")
         if regular_rooms:
-            with st.expander("View Regular Rooms"):
-                for room in regular_rooms[:10]:  # Show first 10
-                    st.write(f"• {room}")
-                if len(regular_rooms) > 10:
-                    st.write(f"... and {len(regular_rooms) - 10} more")
+            with st.expander("View Regular Rooms (Priority Order)"):
+                st.markdown("**Priority 1 (Highest):** CBM rooms")
+                st.markdown("**Priority 2:** SSK rooms") 
+                st.markdown("**Priority 3:** I.MGMT rooms")
+                st.markdown("**Priority 4:** CREEK rooms")
+                st.markdown("**Priority 5 (Lowest):** CHS rooms")
+                st.write("---")
+                for room in regular_rooms[:15]:  # Show first 15
+                    priority = get_room_priority_group(room)
+                    st.write(f"• {room} (Priority {priority})")
+                if len(regular_rooms) > 15:
+                    st.write(f"... and {len(regular_rooms) - 15} more")
     
     # File upload
     st.markdown("---")
@@ -460,13 +510,25 @@ def main():
         total student strength: 25
         ```
         
-        ### Room Format Examples:
-        ```
-        IT LAB # 7
-        ITROOM  301
-        CBM101
-        CBM103
-        ```
+        ### Room Priority System:
+        
+        **Regular Rooms (in priority order):**
+        1. **CBM rooms** (Highest priority) - CBM409, CBM410, CBM413, etc.
+        2. **SSK rooms** - SSKBLDC401, SSKBLDC402, etc. 
+        3. **I.MGMT rooms** - I.MGMT # 202, I.MGMTLAB # 302, etc.
+        4. **CREEK rooms** - CREKCLG506, etc.
+        5. **CHS rooms** (Lowest priority) - CHS401, CHS402, etc.
+        
+        **IT Labs/Rooms (for MIS, CSC, BDS, SEC courses):**
+        - IT LAB # 7
+        - ITROOM 301
+        - I.MGMTLAB rooms
+        
+        ### Allocation Logic:
+        - Tries higher priority rooms first (CBM → SSK → I.MGMT → CREEK → CHS)
+        - Randomizes within each priority group to ensure variety
+        - Prevents same sections from always getting the same room types
+        - Tracks recently allocated rooms to encourage distribution
         
         ### Important notes:
         - Courses starting with **MIS, CSC, BDS, SEC** will be prioritized for IT labs/rooms
