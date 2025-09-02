@@ -5,6 +5,7 @@ from datetime import datetime
 import re
 import io
 import random
+import plotly.express as px
 
 # Page configuration
 st.set_page_config(
@@ -179,12 +180,89 @@ def get_room_priority_group(room_name):
         return 2
     elif 'I.MGMT' in room_str or 'IMGMT' in room_str:
         return 3
+    elif 'LIB' in room_str:
+        return 4  # Library rooms - after I.MGMT
     elif 'CREEK' in room_str or 'CRK' in room_str:
-        return 4
+        return 5
     elif 'CHS' in room_str:
-        return 5  # Lowest priority
+        return 6  # Lowest priority
     else:
-        return 6  # Unknown rooms get lowest priority
+        return 7  # Unknown rooms get lowest priority
+
+def get_room_category(room_name):
+    """Get room category for pie chart"""
+    room_str = str(room_name).upper()
+    
+    if 'CBM' in room_str:
+        return 'CBM Rooms'
+    elif 'SSK' in room_str:
+        return 'SSK Rooms'
+    elif 'I.MGMT' in room_str or 'IMGMT' in room_str:
+        return 'I.MGMT Rooms'
+    elif 'LIB' in room_str:
+        return 'Library Rooms'
+    elif 'CREEK' in room_str or 'CRK' in room_str:
+        return 'Creek Rooms'
+    elif 'CHS' in room_str:
+        return 'CHS Rooms'
+    elif 'IT LAB' in room_str or 'ITROOM' in room_str or 'IT_LAB' in room_str or 'IT_ROOM' in room_str:
+        return 'IT Labs'
+    else:
+        return 'Other Rooms'
+
+def create_room_distribution_chart(rooms_list):
+    """Create a pie chart showing room distribution by category"""
+    # Count rooms by category
+    room_categories = {}
+    for room in rooms_list:
+        category = get_room_category(room)
+        room_categories[category] = room_categories.get(category, 0) + 1
+    
+    # Create pie chart data
+    categories = list(room_categories.keys())
+    counts = list(room_categories.values())
+    
+    # Define colors for different categories
+    color_map = {
+        'CBM Rooms': '#FF6B6B',      # Red
+        'SSK Rooms': '#4ECDC4',      # Teal
+        'I.MGMT Rooms': '#45B7D1',   # Blue
+        'Library Rooms': '#96CEB4',   # Green
+        'Creek Rooms': '#FECA57',    # Yellow
+        'CHS Rooms': '#FF9FF3',      # Pink
+        'IT Labs': '#54A0FF',        # Light Blue
+        'Other Rooms': '#C7ECEE'     # Light Gray
+    }
+    
+    colors = [color_map.get(cat, '#C7ECEE') for cat in categories]
+    
+    # Create pie chart
+    fig = px.pie(
+        values=counts, 
+        names=categories,
+        title="Room Distribution by Category",
+        color_discrete_sequence=colors
+    )
+    
+    fig.update_traces(
+        textposition='inside', 
+        textinfo='percent+label',
+        hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
+    )
+    
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.2,
+            xanchor="center",
+            x=0.5
+        ),
+        font=dict(size=12)
+    )
+    
+    return fig
 
 def distribute_rooms_by_priority(rooms_list, exclude_allocated=None):
     """Distribute rooms by priority groups with randomization within each group"""
@@ -242,7 +320,7 @@ def allocate_rooms(courses_df, rooms_list):
         time_slot = course['parsed_time_slot']
         course_code = course.get('course_code', course.get('Course Code', ''))
         
-        # Create course dictionary
+        # Create course dictionary with new columns
         course_dict = {
             'program': course.get('program', course.get('Program', '')),
             'section': course.get('section', course.get('Section', '')),
@@ -252,6 +330,8 @@ def allocate_rooms(courses_df, rooms_list):
             'days': course.get('days', course.get('Days', '')),
             'times': course.get("time's", course.get('times', course.get('Time', ''))),
             'students': course.get('total student strength', course.get('Students', 0)),
+            'semester': course.get('semester_selected', course.get('Semester', '')),
+            'catalog_year': course.get('catalog_year', course.get('Catalog Year', '')),
             'allocated_room': None
         }
         
@@ -352,35 +432,43 @@ def main():
     else:
         st.success(f"✅ Loaded {len(rooms_list)} rooms from rooms.csv")
     
-    # Show room categories with priority explanation
+    # Show room categories with priority explanation and pie chart
     lab_rooms = [room for room in rooms_list if is_lab_room(room)]
     regular_rooms = [room for room in rooms_list if not is_lab_room(room)]
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.info(f"🖥️ **IT Labs/Rooms:** {len(lab_rooms)}")
-        if lab_rooms:
-            with st.expander("View IT Labs/Rooms"):
-                for room in lab_rooms[:10]:  # Show first 10
-                    st.write(f"• {room}")
-                if len(lab_rooms) > 10:
-                    st.write(f"... and {len(lab_rooms) - 10} more")
-    
-    with col2:
-        st.info(f"🏛️ **Regular Rooms:** {len(regular_rooms)}")
-        if regular_rooms:
-            with st.expander("View Regular Rooms (Priority Order)"):
-                st.markdown("**Priority 1 (Highest):** CBM rooms")
-                st.markdown("**Priority 2:** SSK rooms") 
-                st.markdown("**Priority 3:** I.MGMT rooms")
-                st.markdown("**Priority 4:** CREEK rooms")
-                st.markdown("**Priority 5 (Lowest):** CHS rooms")
-                st.write("---")
-                for room in regular_rooms[:15]:  # Show first 15
-                    priority = get_room_priority_group(room)
-                    st.write(f"• {room} (Priority {priority})")
-                if len(regular_rooms) > 15:
-                    st.write(f"... and {len(regular_rooms) - 15} more")
+    # Create room distribution chart
+    if rooms_list:
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            # Room distribution pie chart
+            fig = create_room_distribution_chart(rooms_list)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            st.info(f"🖥️ **IT Labs/Rooms:** {len(lab_rooms)}")
+            if lab_rooms:
+                with st.expander("View IT Labs/Rooms"):
+                    for room in lab_rooms[:10]:  # Show first 10
+                        st.write(f"• {room}")
+                    if len(lab_rooms) > 10:
+                        st.write(f"... and {len(lab_rooms) - 10} more")
+            
+            st.info(f"🏛️ **Regular Rooms:** {len(regular_rooms)}")
+            if regular_rooms:
+                with st.expander("View Regular Rooms (Priority Order)"):
+                    st.markdown("**Priority 1 (Highest):** CBM rooms")
+                    st.markdown("**Priority 2:** SSK rooms") 
+                    st.markdown("**Priority 3:** I.MGMT rooms")
+                    st.markdown("**Priority 4:** Library rooms (LIB)")
+                    st.markdown("**Priority 5:** CREEK rooms")
+                    st.markdown("**Priority 6 (Lowest):** CHS rooms")
+                    st.write("---")
+                    for room in regular_rooms[:15]:  # Show first 15
+                        priority = get_room_priority_group(room)
+                        st.write(f"• {room} (Priority {priority})")
+                    if len(regular_rooms) > 15:
+                        st.write(f"... and {len(regular_rooms) - 15} more")
     
     # File upload - Multiple files support
     st.markdown("---")
@@ -407,10 +495,6 @@ def main():
                         df = pd.read_csv(uploaded_file)
                     else:
                         df = pd.read_excel(uploaded_file)
-                    
-                    # Add file source information
-                    df['source_file'] = uploaded_file.name
-                    df['file_number'] = i
                     
                     # Combine with previous data
                     combined_df = pd.concat([combined_df, df], ignore_index=True)
@@ -445,27 +529,22 @@ def main():
                 with col3:
                     catalogs = len(uploaded_files)
                     st.metric("Catalogs Combined", catalogs)
-                
-                # Detailed file info
-                with st.expander("📋 Detailed File Information"):
-                    for info in file_info:
-                        st.write(f"**{info['file']}**: {info['courses']} courses - {info['status']}")
             
             if len(combined_df) > 0:
                 st.success(f"✅ Successfully combined {len(uploaded_files)} files into {len(combined_df)} total courses!")
                 
-                # Show preview with source file information
+                # Show preview
                 with st.expander("📋 Preview combined data"):
-                    preview_df = combined_df[['source_file', 'program', 'course_code', 'course_title', 'days', "time's"]].head(10)
+                    preview_columns = ['program', 'course_code', 'course_title', 'days', "time's"]
+                    if 'semester_selected' in combined_df.columns:
+                        preview_columns.insert(-2, 'semester_selected')
+                    if 'catalog_year' in combined_df.columns:
+                        preview_columns.insert(-2, 'catalog_year')
+                    
+                    preview_df = combined_df[preview_columns].head(10)
                     st.dataframe(preview_df)
                     if len(combined_df) > 10:
                         st.write(f"... and {len(combined_df) - 10} more courses from all catalogs")
-                
-                # Show breakdown by catalog - FIXED LINE
-                with st.expander("📊 Breakdown by Catalog"):
-                    breakdown = combined_df.groupby('source_file').size().reset_index(name='courses')
-                    breakdown.columns = ['Catalog File', 'Number of Courses']
-                    st.dataframe(breakdown)
                 
                 # Process allocation
                 if st.button("🎯 Allocate Rooms for All Catalogs", type="primary"):
@@ -495,48 +574,21 @@ def main():
                         ])
                         st.metric("Lab Rooms Used", lab_allocated)
                     
-                    # Allocation by catalog
-                    st.markdown("### 📈 Allocation Summary by Catalog")
-                    catalog_summary = []
+                    # Show results table
+                    st.markdown("### 📋 Detailed Allocation")
                     
-                    # Add source_file column to result_df if not present
-                    if 'source_file' not in result_df.columns:
-                        # Try to match back to original files based on order
-                        result_df['source_file'] = 'Unknown'
-                        current_idx = 0
-                        for info in file_info:
-                            if '✅' in info['status']:
-                                result_df.iloc[current_idx:current_idx + info['courses'], result_df.columns.get_loc('source_file')] = info['file']
-                                current_idx += info['courses']
-                    
-                    for file_name in result_df['source_file'].unique():
-                        if file_name != 'Unknown':  # Skip if we couldn't match files
-                            catalog_data = result_df[result_df['source_file'] == file_name]
-                            allocated = len(catalog_data[~catalog_data['allocated_room'].isin(['ROOM REQUIRED', 'INVALID TIME SLOT'])])
-                            required = len(catalog_data[catalog_data['allocated_room'] == 'ROOM REQUIRED'])
-                            
-                            catalog_summary.append({
-                                'Catalog': file_name,
-                                'Total Courses': len(catalog_data),
-                                'Rooms Allocated': allocated,
-                                'Rooms Required': required,
-                                'Success Rate': f"{(allocated/len(catalog_data)*100):.1f}%" if len(catalog_data) > 0 else "0%"
-                            })
-                    
-                    if catalog_summary:
-                        catalog_summary_df = pd.DataFrame(catalog_summary)
-                        st.dataframe(catalog_summary_df, use_container_width=True)
-                    
-                    # Show results table with file source
-                    st.markdown("### 📋 Detailed Allocation (All Catalogs)")
-                    
-                    # Create display dataframe with source file
+                    # Create display dataframe (removed source_file column)
                     display_columns = ['program', 'section', 'course_code', 'course_title', 
-                                     'faculty', 'days', 'times', 'students', 'allocated_room']
-                    if 'source_file' in result_df.columns:
-                        display_columns.insert(0, 'source_file')
+                                     'faculty', 'days', 'times', 'students', 'semester', 
+                                     'catalog_year', 'allocated_room']
                     
-                    display_df = result_df[display_columns].copy()
+                    # Only include columns that exist in the dataframe
+                    available_columns = []
+                    for col in display_columns:
+                        if col in result_df.columns:
+                            available_columns.append(col)
+                    
+                    display_df = result_df[available_columns].copy()
                     
                     # Color code the rooms
                     def highlight_rooms(val):
@@ -578,71 +630,6 @@ def main():
         
         except Exception as e:
             st.error(f"❌ Error processing files: {str(e)}")
-    
-    # Instructions with sample data
-    with st.expander("📖 How to use this application"):
-        st.markdown("""
-        ### Step-by-step guide:
-        
-        1. **Ensure rooms.csv exists** in the repository with your room list
-        2. **Upload multiple catalog files** (Excel or CSV format) - they will be combined automatically
-        3. **Review the combined data** and file processing summary
-        4. **Click 'Allocate Rooms for All Catalogs'** to process the allocation
-        5. **Download the combined results** as CSV
-        
-        ### Multi-File Upload:
-        - Upload **4-5 catalog files** at once
-        - System **automatically combines** all files into one dataset
-        - Shows **breakdown by catalog** for easy tracking
-        - **Preserves source file information** in results
-        - **Conflict detection works across all catalogs** (prevents room double-booking)
-        
-        ### Expected File Format (Each Catalog):
-        
-        Your course schedule should have these columns (exact names):
-        ```
-        program | section | course_code | course_title | name | days | time's | total student strength
-        ```
-        
-        ### Sample Data Format:
-        ```
-        program: BBA
-        section: 1
-        course_code: MAN405
-        course_title: Strategic Management
-        name: Faculty Member
-        days: Tuesday / Thursday
-        time's: 10:45 AM - 12:15 PM
-        total student strength: 25
-        ```
-        
-        ### Room Priority System:
-        
-        **Regular Rooms (in priority order):**
-        1. **CBM rooms** (Highest priority) - CBM409, CBM410, CBM413, etc.
-        2. **SSK rooms** - SSKBLDC401, SSKBLDC402, etc. 
-        3. **I.MGMT rooms** - I.MGMT # 202, I.MGMTLAB # 302, etc.
-        4. **CREEK rooms** - CREKCLG506, etc.
-        5. **CHS rooms** (Lowest priority) - CHS401, CHS402, etc.
-        
-        **IT Labs/Rooms (for MIS, CSC, BDS, SEC courses):**
-        - IT LAB # 7
-        - ITROOM 301
-        - I.MGMTLAB rooms
-        
-        ### Allocation Logic:
-        - Tries higher priority rooms first (CBM → SSK → I.MGMT → CREEK → CHS)
-        - Randomizes within each priority group to ensure variety
-        - Prevents same sections from always getting the same room types
-        - Tracks recently allocated rooms to encourage distribution
-        
-        ### Important notes:
-        - Courses starting with **MIS, CSC, BDS, SEC** will be prioritized for IT labs/rooms
-        - Time conflicts are automatically detected and prevented
-        - Invalid time formats will be marked as "INVALID TIME SLOT"
-        - When rooms are insufficient, courses will be marked as "ROOM REQUIRED"
-        - Results maintain the same order as your uploaded file
-        """)
 
 if __name__ == "__main__":
     main()
