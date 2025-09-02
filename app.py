@@ -13,6 +13,54 @@ st.set_page_config(
     layout="wide"
 )
 
+# Define authorized users
+AUTHORIZED_USERS = {
+    "fahadhassan": "iobm1",
+    "alihasnain": "iobm2", 
+    "habibullah": "iobm3",
+    "rabiyasabri": "iobm4"
+}
+
+def login_page():
+    """Display login page"""
+    st.title("🔐 Hafali Smart Allocation System")
+    st.markdown("### Please login to access the room allocation system")
+    
+    # Create login form
+    with st.form("login_form"):
+        st.markdown("#### Login Credentials")
+        username = st.text_input("Username", placeholder="Enter your username")
+        password = st.text_input("Password", type="password", placeholder="Enter your password")
+        submit_button = st.form_submit_button("🚪 Login", type="primary")
+        
+        if submit_button:
+            if username.lower() in AUTHORIZED_USERS and AUTHORIZED_USERS[username.lower()] == password:
+                st.session_state.logged_in = True
+                st.session_state.username = username.lower()
+                st.success(f"✅ Welcome, {username}!")
+                st.rerun()
+            else:
+                st.error("❌ Invalid username or password. Please try again.")
+    
+    # Add some helpful information
+    st.markdown("---")
+    st.info("🎯 **Authorized Users Only** - Contact system administrator for access")
+    
+    # Display authorized users (without passwords for security)
+    with st.expander("👥 Authorized Users"):
+        st.markdown("Contact one of these users for login credentials:")
+        st.markdown("• Fahad Hassan")
+        st.markdown("• Ali Hasnain") 
+        st.markdown("• Habibullah")
+        st.markdown("• Rabiya Sabri")
+
+def logout():
+    """Handle logout"""
+    for key in ['logged_in', 'username']:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.rerun()
+
 @st.cache_data
 def load_rooms():
     """Load rooms from the CSV file in the repository"""
@@ -352,8 +400,18 @@ def allocate_rooms(courses_df, rooms_list):
     
     return pd.DataFrame(allocated_courses), rooms_required_count
 
-def main():
-    st.title("🏫 Hafali Smart Allocation System")
+def main_app():
+    """Main application after login"""
+    # Header with logout option
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.title("🏫 Hafali Smart Allocation System")
+        st.markdown(f"Welcome, **{st.session_state.username.title()}**!")
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)  # Add some spacing
+        if st.button("🚪 Logout", type="secondary"):
+            logout()
+    
     st.markdown("Upload your course schedule and automatically allocate rooms")
     
     # Load rooms
@@ -635,6 +693,18 @@ def main():
         
         except Exception as e:
             st.error(f"❌ Error processing files: {str(e)}")
+
+def main():
+    """Main function to handle login state"""
+    # Initialize session state
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    
+    # Show appropriate page based on login status
+    if st.session_state.logged_in:
+        main_app()
+    else:
+        login_page()
 
 if __name__ == "__main__":
     main()
