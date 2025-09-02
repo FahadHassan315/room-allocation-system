@@ -181,12 +181,10 @@ def get_room_priority_group(room_name):
         return 3
     elif 'LIB' in room_str:
         return 4  # Library rooms - after I.MGMT
-    elif 'CREEK' in room_str or 'CRK' in room_str:
-        return 5
-    elif 'CHS' in room_str:
-        return 6  # Lowest priority
+    elif 'CREKCLG' in room_str or 'CHS' in room_str or 'CREEK' in room_str or 'CRK' in room_str:
+        return 5  # Combined Creek rooms
     else:
-        return 7  # Unknown rooms get lowest priority
+        return 6  # Unknown rooms get lowest priority
 
 def get_room_category(room_name):
     """Get room category for pie chart"""
@@ -200,24 +198,22 @@ def get_room_category(room_name):
         return 'I.MGMT Rooms'
     elif 'LIB' in room_str:
         return 'Library Rooms'
-    elif 'CREEK' in room_str or 'CRK' in room_str:
-        return 'Creek Rooms'
-    elif 'CHS' in room_str:
-        return 'CHS Rooms'
+    elif 'CREKCLG' in room_str or 'CHS' in room_str or 'CREEK' in room_str or 'CRK' in room_str:
+        return 'Creek Rooms'  # Combined Creek College and Creek High School
     elif 'IT LAB' in room_str or 'ITROOM' in room_str or 'IT_LAB' in room_str or 'IT_ROOM' in room_str:
         return 'IT Labs'
     else:
         return 'Other Rooms'
 
 def create_room_distribution_chart(rooms_list):
-    """Create a chart showing room distribution by category using native Streamlit"""
+    """Create charts showing room distribution by category using native Streamlit"""
     # Count rooms by category
     room_categories = {}
     for room in rooms_list:
         category = get_room_category(room)
         room_categories[category] = room_categories.get(category, 0) + 1
     
-    # Create dataframe for chart
+    # Create dataframe for charts
     chart_data = pd.DataFrame({
         'Category': list(room_categories.keys()),
         'Count': list(room_categories.values())
@@ -226,7 +222,13 @@ def create_room_distribution_chart(rooms_list):
     # Sort by count for better visualization
     chart_data = chart_data.sort_values('Count', ascending=False)
     
-    return chart_data, room_categories
+    # Create pie chart data for native display
+    pie_data = pd.DataFrame({
+        'Room Type': list(room_categories.keys()),
+        'Count': list(room_categories.values())
+    })
+    
+    return chart_data, room_categories, pie_data
 
 def distribute_rooms_by_priority(rooms_list, exclude_allocated=None):
     """Distribute rooms by priority groups with randomization within each group"""
@@ -400,21 +402,50 @@ def main():
     lab_rooms = [room for room in rooms_list if is_lab_room(room)]
     regular_rooms = [room for room in rooms_list if not is_lab_room(room)]
     
-    # Create room distribution chart
+    # Create room distribution charts
     if rooms_list:
         st.markdown("### 📊 Room Distribution")
         
-        chart_data, room_categories = create_room_distribution_chart(rooms_list)
+        chart_data, room_categories, pie_data = create_room_distribution_chart(rooms_list)
         
-        # Display bar chart
-        st.bar_chart(chart_data.set_index('Category'))
+        # Display charts side by side
+        col1, col2 = st.columns(2)
         
-        # Display statistics in columns
+        with col1:
+            st.markdown("**Bar Chart - Room Distribution**")
+            st.bar_chart(chart_data.set_index('Category'))
+        
+        with col2:
+            st.markdown("**Pie Chart - Room Distribution**")
+            # Create a simple text-based pie chart representation
+            total_rooms = sum(room_categories.values())
+            
+            # Display pie chart using metrics and progress bars
+            colors = ['🔴', '🟢', '🔵', '🟡', '🟠', '🟣', '⚫']
+            color_idx = 0
+            
+            for category, count in sorted(room_categories.items(), key=lambda x: x[1], reverse=True):
+                percentage = (count / total_rooms) * 100
+                color = colors[color_idx % len(colors)]
+                
+                # Create a visual representation using progress bar
+                st.metric(
+                    label=f"{color} {category}", 
+                    value=f"{count} rooms",
+                    delta=f"{percentage:.1f}%"
+                )
+                # Add progress bar for visual representation
+                st.progress(count / max(room_categories.values()))
+                color_idx += 1
+        
+        # Display detailed statistics
+        st.markdown("### 📈 Detailed Room Statistics")
+        
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.markdown("**🏛️ Room Categories:**")
-            for category, count in room_categories.items():
+            st.markdown("**🏛️ Room Categories Summary:**")
+            for category, count in sorted(room_categories.items(), key=lambda x: x[1], reverse=True):
                 percentage = (count / len(rooms_list)) * 100
                 st.write(f"• **{category}:** {count} rooms ({percentage:.1f}%)")
         
@@ -435,12 +466,12 @@ def main():
                     st.markdown("**Priority 2:** SSK rooms") 
                     st.markdown("**Priority 3:** I.MGMT rooms")
                     st.markdown("**Priority 4:** Library rooms (LIB)")
-                    st.markdown("**Priority 5:** CREEK rooms")
-                    st.markdown("**Priority 6 (Lowest):** CHS rooms")
+                    st.markdown("**Priority 5:** Creek rooms (CREKCLG & CHS)")
                     st.write("---")
                     for room in regular_rooms[:15]:  # Show first 15
                         priority = get_room_priority_group(room)
-                        st.write(f"• {room} (Priority {priority})")
+                        category = get_room_category(room)
+                        st.write(f"• {room} ({category}, Priority {priority})")
                     if len(regular_rooms) > 15:
                         st.write(f"... and {len(regular_rooms) - 15} more")
     
