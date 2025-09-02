@@ -5,7 +5,6 @@ from datetime import datetime
 import re
 import io
 import random
-import plotly.express as px
 
 # Page configuration
 st.set_page_config(
@@ -211,58 +210,23 @@ def get_room_category(room_name):
         return 'Other Rooms'
 
 def create_room_distribution_chart(rooms_list):
-    """Create a pie chart showing room distribution by category"""
+    """Create a chart showing room distribution by category using native Streamlit"""
     # Count rooms by category
     room_categories = {}
     for room in rooms_list:
         category = get_room_category(room)
         room_categories[category] = room_categories.get(category, 0) + 1
     
-    # Create pie chart data
-    categories = list(room_categories.keys())
-    counts = list(room_categories.values())
+    # Create dataframe for chart
+    chart_data = pd.DataFrame({
+        'Category': list(room_categories.keys()),
+        'Count': list(room_categories.values())
+    })
     
-    # Define colors for different categories
-    color_map = {
-        'CBM Rooms': '#FF6B6B',      # Red
-        'SSK Rooms': '#4ECDC4',      # Teal
-        'I.MGMT Rooms': '#45B7D1',   # Blue
-        'Library Rooms': '#96CEB4',   # Green
-        'Creek Rooms': '#FECA57',    # Yellow
-        'CHS Rooms': '#FF9FF3',      # Pink
-        'IT Labs': '#54A0FF',        # Light Blue
-        'Other Rooms': '#C7ECEE'     # Light Gray
-    }
+    # Sort by count for better visualization
+    chart_data = chart_data.sort_values('Count', ascending=False)
     
-    colors = [color_map.get(cat, '#C7ECEE') for cat in categories]
-    
-    # Create pie chart
-    fig = px.pie(
-        values=counts, 
-        names=categories,
-        title="Room Distribution by Category",
-        color_discrete_sequence=colors
-    )
-    
-    fig.update_traces(
-        textposition='inside', 
-        textinfo='percent+label',
-        hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
-    )
-    
-    fig.update_layout(
-        showlegend=True,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=-0.2,
-            xanchor="center",
-            x=0.5
-        ),
-        font=dict(size=12)
-    )
-    
-    return fig
+    return chart_data, room_categories
 
 def distribute_rooms_by_priority(rooms_list, exclude_allocated=None):
     """Distribute rooms by priority groups with randomization within each group"""
@@ -432,18 +396,27 @@ def main():
     else:
         st.success(f"✅ Loaded {len(rooms_list)} rooms from rooms.csv")
     
-    # Show room categories with priority explanation and pie chart
+    # Show room categories with priority explanation and charts
     lab_rooms = [room for room in rooms_list if is_lab_room(room)]
     regular_rooms = [room for room in rooms_list if not is_lab_room(room)]
     
     # Create room distribution chart
     if rooms_list:
-        col1, col2 = st.columns([2, 1])
+        st.markdown("### 📊 Room Distribution")
+        
+        chart_data, room_categories = create_room_distribution_chart(rooms_list)
+        
+        # Display bar chart
+        st.bar_chart(chart_data.set_index('Category'))
+        
+        # Display statistics in columns
+        col1, col2, col3 = st.columns(3)
         
         with col1:
-            # Room distribution pie chart
-            fig = create_room_distribution_chart(rooms_list)
-            st.plotly_chart(fig, use_container_width=True)
+            st.markdown("**🏛️ Room Categories:**")
+            for category, count in room_categories.items():
+                percentage = (count / len(rooms_list)) * 100
+                st.write(f"• **{category}:** {count} rooms ({percentage:.1f}%)")
         
         with col2:
             st.info(f"🖥️ **IT Labs/Rooms:** {len(lab_rooms)}")
@@ -453,7 +426,8 @@ def main():
                         st.write(f"• {room}")
                     if len(lab_rooms) > 10:
                         st.write(f"... and {len(lab_rooms) - 10} more")
-            
+        
+        with col3:
             st.info(f"🏛️ **Regular Rooms:** {len(regular_rooms)}")
             if regular_rooms:
                 with st.expander("View Regular Rooms (Priority Order)"):
