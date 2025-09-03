@@ -8,7 +8,7 @@ import random
 
 # Page configuration
 st.set_page_config(
-    page_title="Hafali Smart Allocation System",
+    page_title="IOBM ACMS - Room Allocation System",
     page_icon="🏫",
     layout="wide"
 )
@@ -21,26 +21,60 @@ AUTHORIZED_USERS = {
     "rabiyasabri": "Iobm4"
 }
 
+def display_logo_login():
+    """Display IOBM logo for login page - centered and smaller"""
+    try:
+        # Centered logo for login page
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.image("iobm.png", width=150)
+    except:
+        # Fallback to centered text if logo is not found
+        st.markdown("<div style='text-align: center;'><h2>IOBM</h2></div>", unsafe_allow_html=True)
+
+def display_logo_main():
+    """Display IOBM logo for main app - larger size for header"""
+    try:
+        # Larger logo for main app header
+        st.image("iobm.png", width=200)
+    except:
+        # Fallback text if logo is not found
+        st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
+
 def login_page():
     """Display login page"""
-    st.title("🔐 Hafali Smart Allocation System")
-    st.markdown("### Please login to access the room allocation system")
+    # Center the logo and login form
+    col1, col2, col3 = st.columns([1, 2, 1])
     
-    # Create login form
-    with st.form("login_form"):
-        st.markdown("#### Login Credentials")
-        username = st.text_input("Username", placeholder="Enter your username")
-        password = st.text_input("Password", type="password", placeholder="Enter your password")
-        submit_button = st.form_submit_button("🚪 Login", type="primary")
+    with col2:
+        # Display centered logo for login page
+        st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+        display_logo_login()
+        st.markdown("</div>", unsafe_allow_html=True)
         
-        if submit_button:
-            if username.lower() in AUTHORIZED_USERS and AUTHORIZED_USERS[username.lower()] == password:
-                st.session_state.logged_in = True
-                st.session_state.username = username.lower()
-                st.success(f"✅ Welcome, {username}!")
-                st.rerun()
-            else:
-                st.error("❌ Invalid username or password. Please try again.")
+        st.markdown("""
+        <div style="text-align: center; padding: 1rem;">
+            <h1>IOBM ACMS</h1>
+            <h3>Room Allocation System</h3>
+            <p>Please login to access the room allocation system</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Create login form
+        with st.form("login_form"):
+            st.markdown("#### Login Credentials")
+            username = st.text_input("Username", placeholder="Enter your username")
+            password = st.text_input("Password", type="password", placeholder="Enter your password")
+            submit_button = st.form_submit_button("🚪 Login", type="primary")
+            
+            if submit_button:
+                if username.lower() in AUTHORIZED_USERS and AUTHORIZED_USERS[username.lower()] == password:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username.lower()
+                    st.success(f"✅ Welcome, {username}!")
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid username or password. Please try again.")
     
     # Add some helpful information
     st.markdown("---")
@@ -402,13 +436,23 @@ def allocate_rooms(courses_df, rooms_list):
 
 def main_app():
     """Main application after login"""
-    # Header with logout option
-    col1, col2 = st.columns([4, 1])
+    # Header with logo and logout - Left aligned logo with title
+    col1, col2, col3 = st.columns([2, 4, 2])
+    
     with col1:
-        st.title("🏫 Hafali Smart Allocation System")
-        st.markdown(f"Welcome, **{st.session_state.username.title()}**!")
+        # Logo and title together on the left
+        display_logo_main()
+    
     with col2:
-        st.markdown("<br>", unsafe_allow_html=True)  # Add some spacing
+        st.markdown("""
+        <div style="padding-top: 40px;">
+            <h1>IOBM ACMS</h1>
+            <h3>Room Allocation System</h3>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"**Welcome, {st.session_state.username.title()}!**")
         if st.button("🚪 Logout", type="secondary"):
             logout()
     
