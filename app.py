@@ -15,10 +15,10 @@ st.set_page_config(
 
 # Define authorized users
 AUTHORIZED_USERS = {
-    "Fahadhassan": "Iobm1",
-    "Alihasnain": "Iobm2", 
-    "Habibullah": "Iobm3",
-    "Rabiyasabri": "Iobm4"
+    "fahadhassan": "Iobm1",
+    "alihasnain": "Iobm2", 
+    "habibullah": "Iobm3",
+    "rabiyasabri": "Iobm4"
 }
 
 def display_logo_login():
