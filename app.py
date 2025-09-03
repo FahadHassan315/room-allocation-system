@@ -16,10 +16,10 @@ st.set_page_config(
 
 # Define authorized users
 AUTHORIZED_USERS = {
-    "fahadhassan": "Iobm1",
-    "alihasnain": "Iobm2", 
-    "habibullah": "Iobm3",
-    "rabiyasabri": "Iobm4"
+    "fahadhassan": "iobm1",
+    "alihasnain": "iobm2", 
+    "habibullah": "iobm3",
+    "rabiyasabri": "iobm4"
 }
 
 def display_logo_login():
@@ -312,28 +312,28 @@ def create_room_distribution_pie_chart(rooms_list):
     fig.update_traces(
         textposition='inside', 
         textinfo='percent+label',
-        textfont=dict(size=14, color='white', family='Arial Black'),  # Bold white text
+        textfont=dict(size=12, color='black', family='Arial Black'),  # Bold black text
         hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>',
-        pull=[0.05] * len(df)  # Slightly separate slices for better visibility
+        pull=[0.03] * len(df)  # Slightly separate slices for better visibility
     )
     
-    # Update layout for bigger size and better appearance
+    # Update layout for moderate size and better appearance
     fig.update_layout(
         showlegend=True,
-        height=600,  # Increased from 400 to 600
-        width=800,   # Added explicit width
+        height=450,  # Reduced from 600 to 450
+        width=600,   # Reduced from 800 to 600
         title_x=0.5,  # Center the title
-        title_font=dict(size=18, family='Arial Black'),  # Bigger, bolder title
-        font=dict(size=14),
+        title_font=dict(size=16, family='Arial Black'),  # Slightly smaller title
+        font=dict(size=12),
         legend=dict(
             orientation="v",
             yanchor="middle",
             y=0.5,
             xanchor="left",
             x=1.01,
-            font=dict(size=12)
+            font=dict(size=11)
         ),
-        margin=dict(l=20, r=150, t=80, b=20)  # Adjust margins for legend
+        margin=dict(l=20, r=120, t=60, b=20)  # Adjusted margins
     )
     
     return fig, room_categories
