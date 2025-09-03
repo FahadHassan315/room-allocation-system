@@ -526,7 +526,7 @@ def main_app():
     
     # Show room distribution with Plotly pie chart
     if rooms_list:
-        st.markdown("### 📊 Room Distribution Analysis")
+        st.markdown("### Room Distribution Analysis")
         
         # Create and display pie chart
         fig, room_categories = create_room_distribution_pie_chart(rooms_list)
