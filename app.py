@@ -16,10 +16,10 @@ st.set_page_config(
 
 # Define authorized users
 AUTHORIZED_USERS = {
-    "fahadhassan": "iobm1",
-    "alihasnain": "iobm2", 
-    "habibullah": "iobm3",
-    "rabiyasabri": "iobm4"
+    "fahadhassan": "Iobm1",
+    "alihasnain": "Iobm2", 
+    "habibullah": "Iobm3",
+    "rabiyasabri": "Iobm4"
 }
 
 def display_logo_login():
@@ -322,8 +322,14 @@ def create_room_distribution_pie_chart(rooms_list):
         showlegend=True,
         height=450,  # Reduced from 600 to 450
         width=600,   # Reduced from 800 to 600
-        title_x=0.5,  # Center the title
-        title_font=dict(size=16, family='Arial Black'),  # Slightly smaller title
+        title={
+            'text': 'Room Distribution by Category',
+            'x': 0.5,  # Center horizontally
+            'y': 0.95,  # Position near top
+            'xanchor': 'center',  # Anchor to center
+            'yanchor': 'top',  # Anchor to top
+            'font': {'size': 16, 'family': 'Arial Black'}
+        },
         font=dict(size=12),
         legend=dict(
             orientation="v",
