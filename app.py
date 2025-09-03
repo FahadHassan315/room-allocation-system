@@ -308,18 +308,32 @@ def create_room_distribution_pie_chart(rooms_list):
         color_discrete_sequence=px.colors.qualitative.Set3
     )
     
-    # Update layout for better appearance
+    # Update traces for better text visibility
     fig.update_traces(
         textposition='inside', 
         textinfo='percent+label',
-        hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
+        textfont=dict(size=14, color='white', family='Arial Black'),  # Bold white text
+        hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>',
+        pull=[0.05] * len(df)  # Slightly separate slices for better visibility
     )
     
+    # Update layout for bigger size and better appearance
     fig.update_layout(
         showlegend=True,
-        height=400,
+        height=600,  # Increased from 400 to 600
+        width=800,   # Added explicit width
         title_x=0.5,  # Center the title
-        font=dict(size=12)
+        title_font=dict(size=18, family='Arial Black'),  # Bigger, bolder title
+        font=dict(size=14),
+        legend=dict(
+            orientation="v",
+            yanchor="middle",
+            y=0.5,
+            xanchor="left",
+            x=1.01,
+            font=dict(size=12)
+        ),
+        margin=dict(l=20, r=150, t=80, b=20)  # Adjust margins for legend
     )
     
     return fig, room_categories
