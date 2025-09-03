@@ -5,6 +5,7 @@ from datetime import datetime
 import re
 import io
 import random
+import plotly.express as px
 
 # Page configuration
 st.set_page_config(
@@ -287,30 +288,41 @@ def get_room_category(room_name):
     else:
         return 'Other Rooms'
 
-def create_room_distribution_chart(rooms_list):
-    """Create charts showing room distribution by category using native Streamlit"""
+def create_room_distribution_pie_chart(rooms_list):
+    """Create a Plotly pie chart showing room distribution by category"""
     # Count rooms by category
     room_categories = {}
     for room in rooms_list:
         category = get_room_category(room)
         room_categories[category] = room_categories.get(category, 0) + 1
     
-    # Create dataframe for charts
-    chart_data = pd.DataFrame({
-        'Category': list(room_categories.keys()),
-        'Count': list(room_categories.values())
-    })
+    # Create DataFrame for pie chart
+    df = pd.DataFrame(list(room_categories.items()), columns=['Category', 'Count'])
     
-    # Sort by count for better visualization
-    chart_data = chart_data.sort_values('Count', ascending=False)
+    # Create Plotly pie chart
+    fig = px.pie(
+        df, 
+        values='Count', 
+        names='Category',
+        title='Room Distribution by Category',
+        color_discrete_sequence=px.colors.qualitative.Set3
+    )
     
-    # Create pie chart data for native display
-    pie_data = pd.DataFrame({
-        'Room Type': list(room_categories.keys()),
-        'Count': list(room_categories.values())
-    })
+    # Update layout for better appearance
+    fig.update_traces(
+        textposition='inside', 
+        textinfo='percent+label',
+        hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
+    )
     
-    return chart_data, room_categories, pie_data
+    fig.update_layout(
+        showlegend=True,
+        height=400,
+        title_x=0.5,  # Center the title
+        font=dict(size=12)
+    )
+    
+    return fig, room_categories
 
 def distribute_rooms_by_priority(rooms_list, exclude_allocated=None):
     """Distribute rooms by priority groups with randomization within each group"""
@@ -500,82 +512,57 @@ def main_app():
     else:
         st.success(f"✅ Loaded {len(rooms_list)} rooms from rooms.csv")
     
-    # Show room categories with priority explanation and charts
-    lab_rooms = [room for room in rooms_list if is_lab_room(room)]
-    regular_rooms = [room for room in rooms_list if not is_lab_room(room)]
-    
-    # Create room distribution charts
+    # Show room distribution with Plotly pie chart
     if rooms_list:
-        st.markdown("### 📊 Room Distribution")
+        st.markdown("### 📊 Room Distribution Analysis")
         
-        chart_data, room_categories, pie_data = create_room_distribution_chart(rooms_list)
+        # Create and display pie chart
+        fig, room_categories = create_room_distribution_pie_chart(rooms_list)
+        st.plotly_chart(fig, use_container_width=True)
         
-        # Display charts side by side
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("**Bar Chart - Room Distribution**")
-            st.bar_chart(chart_data.set_index('Category'))
-        
-        with col2:
-            st.markdown("**Pie Chart - Room Distribution**")
-            # Create a simple text-based pie chart representation
-            total_rooms = sum(room_categories.values())
-            
-            # Display pie chart using metrics and progress bars
-            colors = ['🔴', '🟢', '🔵', '🟡', '🟠', '🟣', '⚫']
-            color_idx = 0
-            
-            for category, count in sorted(room_categories.items(), key=lambda x: x[1], reverse=True):
-                percentage = (count / total_rooms) * 100
-                color = colors[color_idx % len(colors)]
-                
-                # Create a visual representation using progress bar
-                st.metric(
-                    label=f"{color} {category}", 
-                    value=f"{count} rooms",
-                    delta=f"{percentage:.1f}%"
-                )
-                # Add progress bar for visual representation
-                st.progress(count / max(room_categories.values()))
-                color_idx += 1
-        
-        # Display detailed statistics
-        st.markdown("### 📈 Detailed Room Statistics")
-        
+        # Summary statistics in columns
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.markdown("**🏛️ Room Categories Summary:**")
-            for category, count in sorted(room_categories.items(), key=lambda x: x[1], reverse=True):
-                percentage = (count / len(rooms_list)) * 100
-                st.write(f"• **{category}:** {count} rooms ({percentage:.1f}%)")
+            lab_rooms = [room for room in rooms_list if is_lab_room(room)]
+            st.metric("Total Rooms", len(rooms_list))
+            st.metric("IT Labs", len(lab_rooms))
         
         with col2:
-            st.info(f"🖥️ **IT Labs/Rooms:** {len(lab_rooms)}")
-            if lab_rooms:
-                with st.expander("View IT Labs/Rooms"):
-                    for room in lab_rooms[:10]:  # Show first 10
-                        st.write(f"• {room}")
-                    if len(lab_rooms) > 10:
-                        st.write(f"... and {len(lab_rooms) - 10} more")
+            regular_rooms = [room for room in rooms_list if not is_lab_room(room)]
+            st.metric("Regular Rooms", len(regular_rooms))
+            top_category = max(room_categories, key=room_categories.get)
+            st.metric("Largest Category", f"{top_category}")
         
         with col3:
-            st.info(f"🏛️ **Regular Rooms:** {len(regular_rooms)}")
-            if regular_rooms:
-                with st.expander("View Regular Rooms (Priority Order)"):
-                    st.markdown("**Priority 1 (Highest):** CBM rooms")
-                    st.markdown("**Priority 2:** SSK rooms") 
-                    st.markdown("**Priority 3:** I.MGMT rooms")
-                    st.markdown("**Priority 4:** Library rooms (LIB)")
-                    st.markdown("**Priority 5:** Creek rooms (CREKCLG & CHS)")
-                    st.write("---")
-                    for room in regular_rooms[:15]:  # Show first 15
-                        priority = get_room_priority_group(room)
-                        category = get_room_category(room)
-                        st.write(f"• {room} ({category}, Priority {priority})")
-                    if len(regular_rooms) > 15:
-                        st.write(f"... and {len(regular_rooms) - 15} more")
+            st.metric("Categories", len(room_categories))
+            avg_per_category = round(len(rooms_list) / len(room_categories), 1)
+            st.metric("Avg per Category", avg_per_category)
+        
+        # Detailed breakdown in expandable section
+        with st.expander("🏛️ Detailed Room Breakdown"):
+            # Create summary table
+            summary_data = []
+            for category, count in sorted(room_categories.items(), key=lambda x: x[1], reverse=True):
+                percentage = (count / len(rooms_list)) * 100
+                priority_ranges = {
+                    'CBM Rooms': 'Priority 1 (Highest)',
+                    'SSK Rooms': 'Priority 2',
+                    'I.MGMT Rooms': 'Priority 3', 
+                    'Library Rooms': 'Priority 4',
+                    'Creek Rooms': 'Priority 5',
+                    'IT Labs': 'Special (Lab Courses)',
+                    'Other Rooms': 'Priority 6 (Lowest)'
+                }
+                summary_data.append({
+                    'Category': category,
+                    'Count': count,
+                    'Percentage': f"{percentage:.1f}%",
+                    'Priority': priority_ranges.get(category, 'Unknown')
+                })
+            
+            summary_df = pd.DataFrame(summary_data)
+            st.dataframe(summary_df, use_container_width=True)
     
     # File upload - Multiple files support
     st.markdown("---")
@@ -737,6 +724,17 @@ def main_app():
         
         except Exception as e:
             st.error(f"❌ Error processing files: {str(e)}")
+
+    # Footer
+    st.markdown("---")
+    st.markdown(
+        """
+        <div style='text-align: center; color: #666; font-size: 12px; margin-top: 30px;'>
+            <p><strong>Development Team:</strong> Fahad Hassan, Ali Hasnain Abro | <strong>Supervisor:</strong> Dr. Rabiya Sabri | <strong>Designer:</strong> Habibullah Rajpar</p>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
 
 def main():
     """Main function to handle login state"""
