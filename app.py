@@ -322,14 +322,6 @@ def create_room_distribution_pie_chart(rooms_list):
         showlegend=True,
         height=450,  # Reduced from 600 to 450
         width=600,   # Reduced from 800 to 600
-        title={
-            'text': 'Room Distribution by Category',
-            'x': 0.5,  # Center horizontally
-            'y': 0.95,  # Position near top
-            'xanchor': 'center',  # Anchor to center
-            'yanchor': 'top',  # Anchor to top
-            'font': {'size': 16, 'family': 'Arial Black'}
-        },
         font=dict(size=12),
         legend=dict(
             orientation="v",
@@ -339,7 +331,7 @@ def create_room_distribution_pie_chart(rooms_list):
             x=1.01,
             font=dict(size=11)
         ),
-        margin=dict(l=20, r=120, t=60, b=20)  # Adjusted margins
+        margin=dict(l=20, r=120, t=20, b=20)  # Reduced top margin since no title
     )
     
     return fig, room_categories
