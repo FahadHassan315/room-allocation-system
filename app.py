@@ -28,7 +28,7 @@ def display_logo_login():
         # Centered logo for login page
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
-            st.image("iobm.png", width=200)
+            st.image("iobm.png", width=400)
     except:
         # Fallback to centered text if logo is not found
         st.markdown("<div style='text-align: center;'><h2>IOBM</h2></div>", unsafe_allow_html=True)
