@@ -11,7 +11,7 @@ import plotly.express as px
 st.set_page_config(
     page_title="SSK ARMS - Room Allocation System",
     page_icon="🏫",
-    
+    layout="wide"
 )
 
 # Define authorized users
@@ -29,6 +29,8 @@ def display_logo_login():
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
             st.image("iobm.png", width=150)
+        <div style="text-align: center; padding: 1rem;">
+    
     except:
         # Fallback to centered text if logo is not found
         st.markdown("<div style='text-align: center;'><h2>IOBM</h2></div>", unsafe_allow_html=True)
