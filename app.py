@@ -223,65 +223,20 @@ def parse_time_slot(days_str, time_str):
         'original_time': time_str
     }
 
-def needs_lab_room(course_code, program):
-    """Check if course needs specific lab room types"""
+def needs_lab_room(course_code):
+    """Check if course needs IT lab/room - only MIS, CSC, BDS, SEC"""
     if pd.isna(course_code):
-        return 'none'
+        return False
     
     course_code = str(course_code).upper().strip()
-    program = str(program).upper().strip() if pd.notna(program) else ""
+    lab_prefixes = ['MIS', 'CSC', 'BDS', 'SEC']
     
-    # Special courses that need IT labs
-    special_it_courses = ['SCM400', 'STA302']
-    if course_code in special_it_courses:
-        return 'it_lab'
-    
-    # Course prefixes that need IT labs
-    it_lab_prefixes = ['MIS', 'CSC', 'BDS', 'SEC', 'CSP', 'BTM']
-    if any(course_code.startswith(prefix) for prefix in it_lab_prefixes):
-        return 'it_lab'
-    
-    # Physics courses need SSKLAB402
-    if course_code.startswith('PHY'):
-        return 'physics_lab'
-    
-    # Engineering courses need science labs
-    science_lab_prefixes = ['GSC', 'CME', 'EPE', 'ELE', 'ENG', 'MEM']
-    if any(course_code.startswith(prefix) for prefix in science_lab_prefixes):
-        return 'science_lab'
-    
-    return 'none'
-
-def needs_faculty_room(program):
-    """Check if program is Research or Thesis"""
-    if pd.isna(program):
-        return False
-    
-    program = str(program).upper().strip()
-    return 'RESEARCH' in program or 'THESIS' in program
-
-def has_friday_class(days_str):
-    """Check if class has Friday in its schedule"""
-    if pd.isna(days_str):
-        return False
-    
-    days_str = str(days_str).upper()
-    return 'FRIDAY' in days_str or 'FRI' in days_str
+    return any(course_code.startswith(prefix) for prefix in lab_prefixes)
 
 def is_lab_room(room_name):
-    """Check if room is an IT lab"""
+    """Check if room is an IT lab or IT room"""
     room_str = str(room_name).upper()
     return 'IT LAB' in room_str or 'ITROOM' in room_str or 'IT_LAB' in room_str or 'IT_ROOM' in room_str
-
-def is_science_lab(room_name):
-    """Check if room is a science lab (SSKLAB402, SSKLAB403)"""
-    room_str = str(room_name).upper()
-    return 'SSKLAB' in room_str
-
-def is_physics_lab(room_name):
-    """Check if room is SSKLAB402 specifically for Physics"""
-    room_str = str(room_name).upper()
-    return room_str == 'SSKLAB402'
 
 def has_time_conflict(slot1, slot2):
     """Check if two time slots conflict"""
@@ -320,10 +275,8 @@ def get_room_category(room_name):
     
     if 'CBM' in room_str:
         return 'CBM Rooms'
-    elif 'SSK' in room_str and 'SSKLAB' not in room_str:
+    elif 'SSK' in room_str:
         return 'SSK Rooms'
-    elif 'SSKLAB' in room_str:
-        return 'Science Labs'
     elif 'I.MGMT' in room_str or 'IMGMT' in room_str:
         return 'I.MGMT Rooms'
     elif 'LIB' in room_str:
@@ -407,7 +360,7 @@ def distribute_rooms_by_priority(rooms_list, exclude_allocated=None):
     return final_room_order
 
 def allocate_rooms(courses_df, rooms_list):
-    """Main room allocation function with enhanced logic for special requirements"""
+    """Main room allocation function with priority-based room distribution"""
     # Create a copy of the dataframe to preserve original order
     df = courses_df.copy().reset_index(drop=True)
     
@@ -420,11 +373,9 @@ def allocate_rooms(courses_df, rooms_list):
         axis=1
     )
     
-    # Separate different types of rooms
-    it_lab_rooms = [room for room in rooms_list if is_lab_room(room)]
-    science_lab_rooms = [room for room in rooms_list if is_science_lab(room)]
-    physics_lab_room = [room for room in rooms_list if is_physics_lab(room)]  # SSKLAB402
-    regular_rooms = [room for room in rooms_list if not (is_lab_room(room) or is_science_lab(room))]
+    # Separate lab and regular rooms
+    lab_rooms = [room for room in rooms_list if is_lab_room(room)]
+    regular_rooms = [room for room in rooms_list if not is_lab_room(room)]
     
     # Track room assignments by time slot
     room_schedule = {room: [] for room in rooms_list}
@@ -433,27 +384,22 @@ def allocate_rooms(courses_df, rooms_list):
     recently_allocated = set()
     allocation_counter = 0
     
-    # Track shortfalls
-    it_lab_shortfall = 0
-    regular_room_shortfall = 0
-    
-    # Process courses in original order
+    # Process courses in original order (no grouping)
     allocated_courses = []
+    rooms_required_count = 0
     
     for index, course in df.iterrows():
         time_slot = course['parsed_time_slot']
         course_code = course.get('course_code', course.get('Course Code', ''))
-        program = course.get('program', course.get('Program', ''))
-        days = course.get('days', course.get('Days', ''))
         
         # Create course dictionary with new columns
         course_dict = {
-            'program': program,
+            'program': course.get('program', course.get('Program', '')),
             'section': course.get('section', course.get('Section', '')),
             'course_code': course_code,
             'course_title': course.get('course_title', course.get('Course Title', '')),
             'faculty': course.get('name', course.get('Faculty', course.get('Name', ''))),
-            'days': days,
+            'days': course.get('days', course.get('Days', '')),
             'times': course.get("time's", course.get('times', course.get('Time', ''))),
             'students': course.get('total student strength', course.get('Students', 0)),
             'semester': course.get('semester_selected', course.get('Semester', '')),
@@ -461,47 +407,23 @@ def allocate_rooms(courses_df, rooms_list):
             'allocated_room': None
         }
         
-        # Check for special cases first
-        
-        # 1. Research/Thesis programs
-        if needs_faculty_room(program):
-            course_dict['allocated_room'] = 'Facroom'
-            allocated_courses.append(course_dict)
-            continue
-        
-        # 2. Friday classes
-        if has_friday_class(days):
-            course_dict['allocated_room'] = 'No Room'
-            allocated_courses.append(course_dict)
-            continue
-        
-        # 3. Invalid time slots
+        # Skip courses with invalid time slots
         if not time_slot:
             course_dict['allocated_room'] = 'INVALID TIME SLOT'
             allocated_courses.append(course_dict)
             continue
         
-        # 4. Determine room requirement type
-        lab_requirement = needs_lab_room(course_code, program)
-        
-        # Get appropriate room list based on requirement
-        if lab_requirement == 'physics_lab':
-            # Physics courses need SSKLAB402 specifically
-            preferred_rooms = physics_lab_room + science_lab_rooms + distribute_rooms_by_priority(regular_rooms, recently_allocated)
-        elif lab_requirement == 'science_lab':
-            # Engineering courses need science labs but not SSKLAB402 (exclude physics lab)
-            available_science_labs = [room for room in science_lab_rooms if not is_physics_lab(room)]
-            preferred_rooms = available_science_labs + distribute_rooms_by_priority(regular_rooms, recently_allocated)
-        elif lab_requirement == 'it_lab':
-            # IT courses need IT labs first, then regular rooms
-            it_rooms_prioritized = distribute_rooms_by_priority(it_lab_rooms, recently_allocated)
+        # Get prioritized room list with variety
+        if needs_lab_room(course_code):
+            # For lab courses: prioritized labs first, then prioritized regular rooms
+            lab_rooms_prioritized = distribute_rooms_by_priority(lab_rooms, recently_allocated)
             regular_rooms_prioritized = distribute_rooms_by_priority(regular_rooms, recently_allocated)
-            preferred_rooms = it_rooms_prioritized + regular_rooms_prioritized
+            preferred_rooms = lab_rooms_prioritized + regular_rooms_prioritized
         else:
-            # Regular courses get regular rooms first, then labs if needed
+            # For regular courses: prioritized regular rooms first, then prioritized labs
             regular_rooms_prioritized = distribute_rooms_by_priority(regular_rooms, recently_allocated)
-            it_rooms_prioritized = distribute_rooms_by_priority(it_lab_rooms, recently_allocated)
-            preferred_rooms = regular_rooms_prioritized + it_rooms_prioritized + science_lab_rooms
+            lab_rooms_prioritized = distribute_rooms_by_priority(lab_rooms, recently_allocated)
+            preferred_rooms = regular_rooms_prioritized + lab_rooms_prioritized
         
         # Try to allocate a room
         room_allocated = False
@@ -524,13 +446,8 @@ def allocate_rooms(courses_df, rooms_list):
                 break
         
         if not room_allocated:
-            # Track shortfall type
-            if lab_requirement == 'it_lab':
-                course_dict['allocated_room'] = 'IT LAB REQUIRED'
-                it_lab_shortfall += 1
-            else:
-                course_dict['allocated_room'] = 'ROOM REQUIRED'
-                regular_room_shortfall += 1
+            course_dict['allocated_room'] = 'ROOM REQUIRED'
+            rooms_required_count += 1
         
         allocated_courses.append(course_dict)
         
@@ -539,7 +456,7 @@ def allocate_rooms(courses_df, rooms_list):
         if allocation_counter % 8 == 0:
             recently_allocated.clear()
     
-    return pd.DataFrame(allocated_courses), it_lab_shortfall, regular_room_shortfall
+    return pd.DataFrame(allocated_courses), rooms_required_count
 
 def main_app():
     """Main application after login"""
@@ -607,7 +524,7 @@ def main_app():
     else:
         st.success(f"✅ Loaded {len(rooms_list)} rooms from rooms.csv")
     
-    # Show room distribution with enhanced categorization
+    # Show room distribution with Plotly pie chart
     if rooms_list:
         st.markdown("### Room Distribution Analysis")
         
@@ -615,27 +532,21 @@ def main_app():
         fig, room_categories = create_room_distribution_pie_chart(rooms_list)
         st.plotly_chart(fig, use_container_width=True)
         
-        # Enhanced summary statistics in columns
-        col1, col2, col3, col4 = st.columns(4)
+        # Summary statistics in columns
+        col1, col2, col3 = st.columns(3)
         
         with col1:
-            it_lab_rooms = [room for room in rooms_list if is_lab_room(room)]
+            lab_rooms = [room for room in rooms_list if is_lab_room(room)]
             st.metric("Total Rooms", len(rooms_list))
-            st.metric("IT Labs", len(it_lab_rooms))
+            st.metric("IT Labs", len(lab_rooms))
         
         with col2:
-            science_lab_rooms = [room for room in rooms_list if is_science_lab(room)]
-            regular_rooms = [room for room in rooms_list if not (is_lab_room(room) or is_science_lab(room))]
-            st.metric("Science Labs", len(science_lab_rooms))
+            regular_rooms = [room for room in rooms_list if not is_lab_room(room)]
             st.metric("Regular Rooms", len(regular_rooms))
-        
-        with col3:
-            physics_lab_count = len([room for room in rooms_list if is_physics_lab(room)])
-            st.metric("Physics Lab (SSKLAB402)", physics_lab_count)
             top_category = max(room_categories, key=room_categories.get)
             st.metric("Largest Category", f"{top_category}")
         
-        with col4:
+        with col3:
             st.metric("Categories", len(room_categories))
             avg_per_category = round(len(rooms_list) / len(room_categories), 1)
             st.metric("Avg per Category", avg_per_category)
@@ -652,8 +563,7 @@ def main_app():
                     'I.MGMT Rooms': 'Priority 3', 
                     'Library Rooms': 'Priority 4',
                     'Creek Rooms': 'Priority 5',
-                    'IT Labs': 'Special (IT Courses)',
-                    'Science Labs': 'Special (Science/Engineering)',
+                    'IT Labs': 'Special (Lab Courses)',
                     'Other Rooms': 'Priority 6 (Lowest)'
                 }
                 summary_data.append({
@@ -721,3 +631,134 @@ def main_app():
                 with col2:
                     total_courses = sum([f['courses'] for f in file_info])
                     st.metric("Total Courses", total_courses)
+                
+                with col3:
+                    catalogs = len(uploaded_files)
+                    st.metric("Catalogs Combined", catalogs)
+            
+            if len(combined_df) > 0:
+                st.success(f"✅ Successfully combined {len(uploaded_files)} files into {len(combined_df)} total courses!")
+                
+                # Show preview
+                with st.expander("📋 Preview combined data"):
+                    preview_columns = ['program', 'course_code', 'course_title', 'days', "time's"]
+                    if 'semester_selected' in combined_df.columns:
+                        preview_columns.insert(-2, 'semester_selected')
+                    if 'catalog_year' in combined_df.columns:
+                        preview_columns.insert(-2, 'catalog_year')
+                    
+                    preview_df = combined_df[preview_columns].head(10)
+                    st.dataframe(preview_df)
+                    if len(combined_df) > 10:
+                        st.write(f"... and {len(combined_df) - 10} more courses from all catalogs")
+                
+                # Process allocation
+                if st.button("🎯 Allocate Rooms for All Catalogs", type="primary"):
+                    with st.spinner("Processing room allocation for combined catalogs..."):
+                        result_df, rooms_needed = allocate_rooms(combined_df, rooms_list)
+                    
+                    # Display results
+                    st.markdown("---")
+                    st.subheader("📊 Allocation Results (All Catalogs Combined)")
+                    
+                    # Statistics
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric("Total Courses", len(result_df))
+                    
+                    with col2:
+                        allocated_count = len(result_df[~result_df['allocated_room'].isin(['ROOM REQUIRED', 'INVALID TIME SLOT'])])
+                        st.metric("Rooms Allocated", allocated_count)
+                    
+                    with col3:
+                        st.metric("Rooms Required", rooms_needed, delta=f"{rooms_needed} additional" if rooms_needed > 0 else None)
+                    
+                    with col4:
+                        lab_allocated = len(result_df[
+                            result_df['allocated_room'].apply(lambda x: is_lab_room(str(x)))
+                        ])
+                        st.metric("Lab Rooms Used", lab_allocated)
+                    
+                    # Show results table
+                    st.markdown("### 📋 Detailed Allocation")
+                    
+                    # Create display dataframe (removed source_file column)
+                    display_columns = ['program', 'section', 'course_code', 'course_title', 
+                                     'faculty', 'days', 'times', 'students', 'semester', 
+                                     'catalog_year', 'allocated_room']
+                    
+                    # Only include columns that exist in the dataframe
+                    available_columns = []
+                    for col in display_columns:
+                        if col in result_df.columns:
+                            available_columns.append(col)
+                    
+                    display_df = result_df[available_columns].copy()
+                    
+                    # Color code the rooms
+                    def highlight_rooms(val):
+                        if 'ROOM REQUIRED' in str(val):
+                            return 'background-color: #ffebee; color: #c62828'
+                        elif 'INVALID' in str(val):
+                            return 'background-color: #fff3e0; color: #ef6c00'
+                        elif is_lab_room(str(val)):
+                            return 'background-color: #e8f5e8; color: #2e7d32'
+                        else:
+                            return 'background-color: #f3e5f5; color: #7b1fa2'
+                    
+                    # Apply styling and display
+                    styled_df = display_df.style.map(highlight_rooms, subset=['allocated_room'])
+                    st.dataframe(styled_df, use_container_width=True)
+                    
+                    # Download button
+                    csv = result_df.to_csv(index=False)
+                    st.download_button(
+                        label="📥 Download Combined Allocation Results (CSV)",
+                        data=csv,
+                        file_name=f"combined_room_allocation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv"
+                    )
+                    
+                    # Show conflicts summary
+                    if rooms_needed > 0:
+                        st.warning(f"⚠️ {rooms_needed} additional rooms are needed across all catalogs. Consider:")
+                        st.markdown("""
+                        - Adding more time slots
+                        - Using additional rooms  
+                        - Splitting large classes
+                        - Scheduling some courses online
+                        - Staggering catalog schedules if possible
+                        """)
+            
+            else:
+                st.error("❌ No valid data found in uploaded files.")
+        
+        except Exception as e:
+            st.error(f"❌ Error processing files: {str(e)}")
+
+    # Footer
+    st.markdown("---")
+    st.markdown(
+        """
+        <div style='text-align: center; color: #666; font-size: 12px; margin-top: 30px;'>
+            <p><strong>Development Team:</strong> Fahad Hassan, Ali Hasnain Abro | <strong>Supervisor:</strong> Dr. Rabiya Sabri | <strong>Designer:</strong> Habibullah Rajpar</p>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
+
+def main():
+    """Main function to handle login state"""
+    # Initialize session state
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    
+    # Show appropriate page based on login status
+    if st.session_state.logged_in:
+        main_app()
+    else:
+        login_page()
+
+if __name__ == "__main__":
+    main()
