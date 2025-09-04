@@ -28,7 +28,7 @@ def display_logo_login():
         # Centered logo for login page
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
-            st.image("iobm.png", width=150, height= 100)
+            st.image("iobm.png", width=150)
     except:
         # Fallback to centered text if logo is not found
         st.markdown("<div style='text-align: center;'><h2>IOBM</h2></div>", unsafe_allow_html=True)
@@ -37,7 +37,7 @@ def display_logo_main():
     """Display IOBM logo for main app - larger size for header"""
     try:
         # Larger logo for main app header
-        st.image("iobm.png", width=150)
+        st.image("iobm.png", width=200)
     except:
         # Fallback text if logo is not found
         st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
