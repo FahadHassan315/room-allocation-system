@@ -29,7 +29,6 @@ def display_logo_login():
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
             st.image("iobm.png", width=150)
-        <div style="text-align: center; padding: 1rem;">
     
     except:
         # Fallback to centered text if logo is not found
