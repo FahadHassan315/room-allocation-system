@@ -9,7 +9,7 @@ import plotly.express as px
 
 # Page configuration
 st.set_page_config(
-    page_title="IOBM ACMS - Room Allocation System",
+    page_title="SSK ARMS - Room Allocation System",
     page_icon="🏫",
     layout="wide"
 )
@@ -55,7 +55,7 @@ def login_page():
         
         st.markdown("""
         <div style="text-align: center; padding: 1rem;">
-            <h1>IOBM ACMS</h1>
+            <h1>SSK ARMS</h1>
             <h3>Room Allocation System</h3>
             <p>Please login to access the room allocation system</p>
         </div>
@@ -470,7 +470,7 @@ def main_app():
     with col2:
         st.markdown("""
         <div style="padding-top: 40px;">
-            <h1>IOBM ACMS</h1>
+            <h1>SSK ARMS</h1>
             <h3>Room Allocation System</h3>
         </div>
         """, unsafe_allow_html=True)
