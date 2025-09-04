@@ -11,7 +11,7 @@ import plotly.express as px
 st.set_page_config(
     page_title="SSK ARMS - Room Allocation System",
     page_icon="🏫",
-    layout="wide"
+    
 )
 
 # Define authorized users
