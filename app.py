@@ -44,10 +44,10 @@ def login_page():
             background-color: #f0f2f6;
             display: flex;
             flex-direction: column; /* Use column to stack children if needed, but primary focus is centering card */
-            justify-content: center; /* Center vertically */
+            justify-content: flex-start; /* Aligned to the top */
             align-items: center;     /* Center horizontally */
             min-height: 100vh;       /* Take full viewport height */
-            padding: 0 !important;   /* Remove default padding */
+            padding-top: 10vh !important; /* Adjusted to move content higher */
             margin: 0 !important;    /* Remove default margin */
             overflow: hidden;        /* Prevent scrolling on the main page */
         }
