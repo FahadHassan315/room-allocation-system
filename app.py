@@ -712,4 +712,58 @@ def main_app():
                         else:
                             return 'background-color: #f3e5f5; color: #7b1fa2'
                     
-                    # Apply styling
+                    # Apply styling and display
+                    styled_df = display_df.style.map(highlight_rooms, subset=['allocated_room'])
+                    st.dataframe(styled_df, use_container_width=True)
+                    
+                    # Download button
+                    csv = result_df.to_csv(index=False)
+                    st.download_button(
+                        label="📥 Download Combined Allocation Results (CSV)",
+                        data=csv,
+                        file_name=f"combined_room_allocation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv"
+                    )
+                    
+                    # Show conflicts summary
+                    if rooms_needed > 0:
+                        st.warning(f"⚠️ {rooms_needed} additional rooms are needed across all catalogs. Consider:")
+                        st.markdown("""
+                        - Adding more time slots
+                        - Using additional rooms  
+                        - Splitting large classes
+                        - Scheduling some courses online
+                        - Staggering catalog schedules if possible
+                        """)
+            
+            else:
+                st.error("❌ No valid data found in uploaded files.")
+        
+        except Exception as e:
+            st.error(f"❌ Error processing files: {str(e)}")
+
+    # Footer
+    st.markdown("---")
+    st.markdown(
+        """
+        <div style='text-align: center; color: #666; font-size: 12px; margin-top: 30px;'>
+            <p><strong>Development Team:</strong> Fahad Hassan, Ali Hasnain Abro | <strong>Supervisor:</strong> Dr. Rabiya Sabri | <strong>Designer:</strong> Habibullah Rajpar</p>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
+
+def main():
+    """Main function to handle login state"""
+    # Initialize session state
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    
+    # Show appropriate page based on login status
+    if st.session_state.logged_in:
+        main_app()
+    else:
+        login_page()
+
+if __name__ == "__main__":
+    main()
