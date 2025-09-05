@@ -23,16 +23,9 @@ AUTHORIZED_USERS = {
 }
 
 def display_logo_login():
-    """Display IOBM logo for login page - centered and smaller"""
-    try:
-        # Centered logo for login page
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col2:
-            st.image("iobm.png", width=150)
-    
-    except:
-        # Fallback to centered text if logo is not found
-        st.markdown("<div style='text-align: center;'><h2>IOBM</h2></div>", unsafe_allow_html=True)
+    """Display IOBM logo for login page - this function is now integrated into login_page()"""
+    # This function is no longer needed as the logo display is now handled directly in login_page()
+    pass
 
 def display_logo_main():
     """Display IOBM logo for main app - larger size for header"""
@@ -44,51 +37,62 @@ def display_logo_main():
         st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
 
 def login_page():
-    """Display login page"""
-    # Center the logo and login form
+    """Display login page with improved structure"""
+    # Center the login form
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Display centered logo for login page
-        st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-        display_logo_login()
+        # Logo section - centered with minimal spacing
+        st.markdown("<div style='text-align: center; margin-bottom: 1rem;'>", unsafe_allow_html=True)
+        try:
+            st.image("iobm.png", width=120)
+        except:
+            st.markdown("<div style='background: #f0f0f0; padding: 1rem; border-radius: 8px; margin: 0 auto; width: 120px;'><h3 style='margin: 0; text-align: center;'>IOBM</h3></div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
+        # Title section - tightly spaced
         st.markdown("""
-        <div style="text-align: center; padding: 1rem;">
-            <h1>SSK ARMS</h1>
-            <h3>Room Allocation System</h3>
-            <p>Please login to access the room allocation system</p>
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <h1 style="color: #d32f2f; margin: 0.5rem 0 0.2rem 0; font-size: 2rem;">SSK ARMS</h1>
+            <h3 style="color: #666; margin: 0.2rem 0 0.3rem 0; font-weight: 400;">Room Allocation System</h3>
+            <p style="color: #888; margin: 0.3rem 0 0; font-size: 0.9rem;">Please login to access the room allocation system</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Create login form
-        with st.form("login_form"):
+        # Login form
+        with st.container():
             st.markdown("#### Login Credentials")
-            username = st.text_input("Username", placeholder="Enter your username")
-            password = st.text_input("Password", type="password", placeholder="Enter your password")
-            submit_button = st.form_submit_button("🚪 Login", type="primary")
             
-            if submit_button:
-                if username.lower() in AUTHORIZED_USERS and AUTHORIZED_USERS[username.lower()] == password:
-                    st.session_state.logged_in = True
-                    st.session_state.username = username.lower()
-                    st.success(f"✅ Welcome, {username}!")
-                    st.rerun()
-                else:
-                    st.error("❌ Invalid username or password. Please try again.")
+            with st.form("login_form"):
+                username = st.text_input("Username", placeholder="Enter your username")
+                password = st.text_input("Password", type="password", placeholder="Enter your password")
+                submit_button = st.form_submit_button("🚪 Login", type="primary", use_container_width=True)
+                
+                if submit_button:
+                    if username.lower() in AUTHORIZED_USERS and AUTHORIZED_USERS[username.lower()] == password:
+                        st.session_state.logged_in = True
+                        st.session_state.username = username.lower()
+                        st.success(f"✅ Welcome, {username}!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Invalid username or password. Please try again.")
     
-    # Add some helpful information
+    # Footer information - more compact
     st.markdown("---")
-    st.info("🎯 **Authorized Users Only** - Contact system administrator for access")
+    col1, col2 = st.columns(2)
     
-    # Display authorized users (without passwords for security)
-    with st.expander("👥 Authorized Users"):
-        st.markdown("Contact one of these users for login credentials:")
-        st.markdown("• Fahad Hassan")
-        st.markdown("• Ali Hasnain") 
-        st.markdown("• Habibullah")
-        st.markdown("• Rabiya Sabri")
+    with col1:
+        st.info("🎯 **Authorized Users Only**\nContact system administrator for access")
+    
+    with col2:
+        with st.expander("👥 Authorized Users"):
+            st.markdown("""
+            **Contact for credentials:**
+            • Fahad Hassan  
+            • Ali Hasnain  
+            • Habibullah  
+            • Rabiya Sabri
+            """)
 
 def logout():
     """Handle logout"""
@@ -708,58 +712,4 @@ def main_app():
                         else:
                             return 'background-color: #f3e5f5; color: #7b1fa2'
                     
-                    # Apply styling and display
-                    styled_df = display_df.style.map(highlight_rooms, subset=['allocated_room'])
-                    st.dataframe(styled_df, use_container_width=True)
-                    
-                    # Download button
-                    csv = result_df.to_csv(index=False)
-                    st.download_button(
-                        label="📥 Download Combined Allocation Results (CSV)",
-                        data=csv,
-                        file_name=f"combined_room_allocation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        mime="text/csv"
-                    )
-                    
-                    # Show conflicts summary
-                    if rooms_needed > 0:
-                        st.warning(f"⚠️ {rooms_needed} additional rooms are needed across all catalogs. Consider:")
-                        st.markdown("""
-                        - Adding more time slots
-                        - Using additional rooms  
-                        - Splitting large classes
-                        - Scheduling some courses online
-                        - Staggering catalog schedules if possible
-                        """)
-            
-            else:
-                st.error("❌ No valid data found in uploaded files.")
-        
-        except Exception as e:
-            st.error(f"❌ Error processing files: {str(e)}")
-
-    # Footer
-    st.markdown("---")
-    st.markdown(
-        """
-        <div style='text-align: center; color: #666; font-size: 12px; margin-top: 30px;'>
-            <p><strong>Development Team:</strong> Fahad Hassan, Ali Hasnain Abro | <strong>Supervisor:</strong> Dr. Rabiya Sabri | <strong>Designer:</strong> Habibullah Rajpar</p>
-        </div>
-        """, 
-        unsafe_allow_html=True
-    )
-
-def main():
-    """Main function to handle login state"""
-    # Initialize session state
-    if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
-    
-    # Show appropriate page based on login status
-    if st.session_state.logged_in:
-        main_app()
-    else:
-        login_page()
-
-if __name__ == "__main__":
-    main()
+                    # Apply styling
