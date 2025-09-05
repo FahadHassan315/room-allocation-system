@@ -22,6 +22,18 @@ AUTHORIZED_USERS = {
     "rabiyasabri": "iobm4"
 }
 
+def display_logo_login():
+    """Display IOBM logo for login page - centered and smaller"""
+    try:
+        # Centered logo for login page
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.image("iobm.png", width=150)
+    
+    except:
+        # Fallback to centered text if logo is not found
+        st.markdown("<div style='text-align: center;'><h2>IOBM</h2></div>", unsafe_allow_html=True)
+
 def display_logo_main():
     """Display IOBM logo for main app - larger size for header"""
     try:
@@ -32,138 +44,51 @@ def display_logo_main():
         st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
 
 def login_page():
-    """
-    Display a compact, perfectly centered login page with a clean layout.
-    This version uses refined CSS to ensure no scrolling is needed and the
-    login elements are contained within a small card-like structure.
-    """
-    st.markdown("""
-        <style>
-        /* Streamlit's main app container */
-        .stApp {
-            background-color: #f0f2f6;
-            display: flex;
-            flex-direction: column; /* Use column to stack children if needed, but primary focus is centering card */
-            justify-content: flex-start; /* Aligned to the top */
-            align-items: center;     /* Center horizontally */
-            min-height: 100vh;       /* Take full viewport height */
-            padding-top: 10vh !important; /* Adjusted to move content higher */
-            margin: 0 !important;    /* Remove default margin */
-            overflow: hidden;        /* Prevent scrolling on the main page */
-        }
-
-        /* Styling for the central login card */
-        .login-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 2.5rem 2rem; /* Adjusted padding for better look */
-            max-width: 380px;    /* Max width of the login card */
-            width: 90%;          /* Responsive width */
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            background-color: white;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1); /* Stronger shadow */
-            text-align: center;
-        }
-
-        /* Image specific styling */
-        .login-card img {
-            margin-bottom: 0.8rem; /* Space below the logo */
-            width: 100px; /* Smaller logo for compactness */
-            height: auto;
-        }
-
-        /* Title and subtitle styling */
-        .login-card h1 {
-            margin-top: 0;
-            margin-bottom: 0.2rem; /* Reduce gap between H1 and H3 */
-            font-size: 2.2rem; /* Slightly smaller H1 */
-            color: #333;
-        }
-
-        .login-card h3 {
-            margin-top: 0;
-            margin-bottom: 1.5rem; /* Space below H3 before form starts */
-            font-size: 1.2rem; /* Smaller H3 */
-            color: #555;
-        }
-
-        /* Login credentials text */
-        .login-credentials-text {
-            font-size: 1rem; /* Smaller text for "Login Credentials" */
-            color: #666;
-            margin-bottom: 1rem; /* Space below this text */
-            font-weight: bold;
-        }
-
-        /* Streamlit form input styling */
-        .stForm > div > div { /* Target the inner div of the form for full width inputs */
-            width: 100%;
-        }
-        .stTextInput, .st-da, .st-eq, .st-dr, .st-es, .st-et { /* Specific Streamlit input elements */
-            width: 100% !important;
-            margin-bottom: 1rem; /* Space between inputs */
-        }
-        .stButton button {
-            width: 100% !important;
-            margin-top: 1rem; /* Space above login button */
-        }
-
-        /* Remove default Streamlit block padding/margins */
-        .block-container {
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-        }
-
-        /* Additional info box (outside the main card) */
-        .stAlert {
-            max-width: 400px; /* Match card width */
-            width: 90%;
-            margin-top: 1.5rem; /* Space between card and info */
-            text-align: left; /* Align alert text */
-        }
-        </style>
+    """Display login page"""
+    # Center the logo and login form
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        # Display centered logo for login page
+        st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+        display_logo_login()
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div style="text-align: center; padding: 1rem;">
+            <h1>SSK ARMS</h1>
+            <h3>Room Allocation System</h3>
+            <p>Please login to access the room allocation system</p>
+        </div>
         """, unsafe_allow_html=True)
         
-    # Main login card container
-    st.markdown("<div class='login-card'>", unsafe_allow_html=True)
-
-    # Logo
-    try:
-        st.image("iobm.png", width=120) # Directly embed image for better control
-    except:
-        st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
+        # Create login form
+        with st.form("login_form"):
+            st.markdown("#### Login Credentials")
+            username = st.text_input("Username", placeholder="Enter your username")
+            password = st.text_input("Password", type="password", placeholder="Enter your password")
+            submit_button = st.form_submit_button("🚪 Login", type="primary")
+            
+            if submit_button:
+                if username.lower() in AUTHORIZED_USERS and AUTHORIZED_USERS[username.lower()] == password:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username.lower()
+                    st.success(f"✅ Welcome, {username}!")
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid username or password. Please try again.")
     
-    # Title and Subtitle
-    st.markdown("<h1>SSK ARMS</h1>", unsafe_allow_html=True)
-    st.markdown("<h3>Room Allocation System</h3>", unsafe_allow_html=True)
-    
-    # Login Form
-    with st.form("login_form", clear_on_submit=False):
-        st.markdown("<p class='login-credentials-text'>Login Credentials</p>", unsafe_allow_html=True)
-        username = st.text_input("Username", placeholder="Enter your username", label_visibility="collapsed")
-        password = st.text_input("Password", type="password", placeholder="Enter your password", label_visibility="collapsed")
-        submit_button = st.form_submit_button("🚪 Login", type="primary", use_container_width=True)
-
-        if submit_button:
-            if username.lower() in AUTHORIZED_USERS and AUTHORIZED_USERS[username.lower()] == password:
-                st.session_state.logged_in = True
-                st.session_state.username = username.lower()
-                st.success(f"✅ Welcome, {username}!")
-                st.rerun()
-            else:
-                st.error("❌ Invalid username or password. Please try again.")
-
-    st.markdown("</div>", unsafe_allow_html=True) # Close login-card div
-    
-    # Add helpful information below the main card, within the centered flow
+    # Add some helpful information
+    st.markdown("---")
     st.info("🎯 **Authorized Users Only** - Contact system administrator for access")
-
-    # The "Authorized Users" expander is removed as per your request.
-    # If you still need it, you could place it here, but it would expand below the centered card.
+    
+    # Display authorized users (without passwords for security)
+    with st.expander("👥 Authorized Users"):
+        st.markdown("Contact one of these users for login credentials:")
+        st.markdown("• Fahad Hassan")
+        st.markdown("• Ali Hasnain") 
+        st.markdown("• Habibullah")
+        st.markdown("• Rabiya Sabri")
 
 def logout():
     """Handle logout"""
