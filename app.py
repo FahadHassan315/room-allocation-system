@@ -34,37 +34,56 @@ def display_logo_main():
 def login_page():
     """
     Display a compact, perfectly centered login page with a clean layout.
-    This version uses refined CSS to ensure no scrolling is needed and the
-    login elements are contained within a small card-like structure.
+    This version uses refined CSS to ensure no scrolling is needed, all elements
+    are centered, and unnecessary whitespace is removed.
     """
     st.markdown("""
         <style>
-        /* Streamlit's main app container */
+        /* Target Streamlit's main app container to remove all default padding/margins */
         .stApp {
             background-color: #f0f2f6;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden; /* Prevent any unexpected scrolling */
+        }
+        
+        /* Target Streamlit's main content wrapper */
+        .block-container {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* Target Streamlit's main div holding the content */
+        .main {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* The overall wrapper for the login content to ensure absolute centering */
+        .login-wrapper {
             display: flex;
-            flex-direction: column; /* Use column to stack children if needed, but primary focus is centering card */
-            justify-content: flex-start; /* Aligned to the top */
+            flex-direction: column;
+            justify-content: center; /* Center vertically */
             align-items: center;     /* Center horizontally */
             min-height: 100vh;       /* Take full viewport height */
-            padding-top: 10vh !important; /* Adjusted to move content higher */
-            margin: 0 !important;    /* Remove default margin */
-            overflow: hidden;        /* Prevent scrolling on the main page */
+            width: 100%;             /* Take full width */
+            padding: 2rem 1rem;      /* Add some global padding for very small screens */
+            box-sizing: border-box;  /* Include padding in width/height calculation */
         }
 
         /* Styling for the central login card */
         .login-card {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            padding: 2.5rem 2rem; /* Adjusted padding for better look */
-            max-width: 380px;    /* Max width of the login card */
-            width: 90%;          /* Responsive width */
+            align-items: center;    /* Center items inside the card */
+            padding: 2.5rem 2rem;   /* Ample padding inside the card */
+            max-width: 380px;       /* Max width of the login card */
+            width: 100%;            /* Make it take full width up to max-width */
             border: 1px solid #ddd;
             border-radius: 10px;
             background-color: white;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1); /* Stronger shadow */
-            text-align: center;
+            text-align: center;     /* Center text within the card */
         }
 
         /* Image specific styling */
@@ -78,26 +97,29 @@ def login_page():
         .login-card h1 {
             margin-top: 0;
             margin-bottom: 0.2rem; /* Reduce gap between H1 and H3 */
-            font-size: 2.2rem; /* Slightly smaller H1 */
+            font-size: 2.2rem;     /* Slightly smaller H1 */
             color: #333;
         }
 
         .login-card h3 {
             margin-top: 0;
             margin-bottom: 1.5rem; /* Space below H3 before form starts */
-            font-size: 1.2rem; /* Smaller H3 */
+            font-size: 1.2rem;     /* Smaller H3 */
             color: #555;
         }
 
         /* Login credentials text */
         .login-credentials-text {
-            font-size: 1rem; /* Smaller text for "Login Credentials" */
+            font-size: 1rem;       /* Smaller text for "Login Credentials" */
             color: #666;
-            margin-bottom: 1rem; /* Space below this text */
+            margin-bottom: 1rem;   /* Space below this text */
             font-weight: bold;
         }
 
-        /* Streamlit form input styling */
+        /* Streamlit form input styling for full width and correct alignment */
+        .stForm {
+            width: 100%; /* Ensure form takes full width of its parent */
+        }
         .stForm > div > div { /* Target the inner div of the form for full width inputs */
             width: 100%;
         }
@@ -110,30 +132,25 @@ def login_page():
             margin-top: 1rem; /* Space above login button */
         }
 
-        /* Remove default Streamlit block padding/margins */
-        .block-container {
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-        }
-
-        /* Additional info box (outside the main card) */
+        /* Additional info box (outside the main card but still centered) */
         .stAlert {
-            max-width: 400px; /* Match card width */
-            width: 90%;
+            max-width: 380px; /* Match card width */
+            width: 100%;
             margin-top: 1.5rem; /* Space between card and info */
             text-align: left; /* Align alert text */
         }
         </style>
         """, unsafe_allow_html=True)
         
+    # Overall wrapper for all login elements
+    st.markdown("<div class='login-wrapper'>", unsafe_allow_html=True)
+
     # Main login card container
     st.markdown("<div class='login-card'>", unsafe_allow_html=True)
 
     # Logo
     try:
-        st.image("iobm.png", width=120) # Directly embed image for better control
+        st.image("iobm.png", width=120) 
     except:
         st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
     
@@ -159,11 +176,11 @@ def login_page():
 
     st.markdown("</div>", unsafe_allow_html=True) # Close login-card div
     
-    # Add helpful information below the main card, within the centered flow
+    # Add helpful information below the main card, still within the centered wrapper
     st.info("🎯 **Authorized Users Only** - Contact system administrator for access")
 
-    # The "Authorized Users" expander is removed as per your request.
-    # If you still need it, you could place it here, but it would expand below the centered card.
+    st.markdown("</div>", unsafe_allow_html=True) # Close login-wrapper div
+
 
 def logout():
     """Handle logout"""
