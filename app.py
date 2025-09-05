@@ -22,18 +22,6 @@ AUTHORIZED_USERS = {
     "rabiyasabri": "iobm4"
 }
 
-def display_logo_login():
-    """Display IOBM logo for login page - centered and smaller"""
-    try:
-        # Centered logo for login page
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col2:
-            st.image("iobm.png", width=150)
-    
-    except:
-        # Fallback to centered text if logo is not found
-        st.markdown("<div style='text-align: center;'><h2>IOBM</h2></div>", unsafe_allow_html=True)
-
 def display_logo_main():
     """Display IOBM logo for main app - larger size for header"""
     try:
@@ -44,12 +32,24 @@ def display_logo_main():
         st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
 
 def login_page():
-    """Display a more compact, centered login page"""
+    """
+    Display a compact, centered login page with a clean layout.
+    This version uses CSS to ensure no scrolling is needed.
+    """
     st.markdown("""
         <style>
+        /* This CSS targets the main Streamlit app container */
         .stApp {
             background-color: #f0f2f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Ensure the container takes full viewport height */
+            padding: 0 !important;
+            margin: 0 !important;
         }
+
+        /* The main login card container */
         .login-container {
             display: flex;
             flex-direction: column;
@@ -57,49 +57,63 @@ def login_page():
             justify-content: center;
             padding: 2rem;
             max-width: 400px;
-            margin: auto;
             border: 1px solid #ddd;
             border-radius: 10px;
             background-color: white;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            margin-top: 10vh; /* Adjust as needed to position vertically */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
-        .login-header {
-            text-align: center;
+
+        /* Custom style to reduce the gap between logo and title */
+        .logo-and-title {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             margin-bottom: 1rem;
         }
-        .login-form {
+        
+        .logo-and-title img {
+            margin-bottom: 0.5rem;
+        }
+        
+        h1.title-text {
+            margin-top: 0;
+            margin-bottom: 0.25rem;
+            font-size: 2.5rem;
+            text-align: center;
+        }
+        
+        h3.subtitle-text {
+            margin-top: 0;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        /* Style the login form to be a bit more compact */
+        .stForm {
             width: 100%;
         }
-        .login-footer {
-            text-align: center;
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 1rem;
-        }
-        .title-spacing {
-            margin-bottom: -1rem; /* Adjust negative margin to reduce gap */
+        
+        /* Style for the info box */
+        .stAlert {
+            margin-top: 20px;
         }
         </style>
         """, unsafe_allow_html=True)
         
-    # Main container for the login page
+    # Main container for the login card
     st.markdown("<div class='login-container'>", unsafe_allow_html=True)
 
-    # Header with logo and title
-    st.markdown("<div class='login-header'>", unsafe_allow_html=True)
-    display_logo_login()
+    # Combined logo and title container
+    st.markdown("<div class='logo-and-title'>", unsafe_allow_html=True)
+    try:
+        st.image("iobm.png", width=120)
+    except:
+        st.markdown("<div style='text-align: center;'><h2>IOBM</h2></div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
-
-    # Title with reduced spacing
-    st.markdown("""
-        <div style="text-align: center; padding: 0.5rem;">
-            <h1 class="title-spacing">SSK ARMS</h1>
-            <h3>Room Allocation System</h3>
-            <p style="font-size: 14px; color: #555;">Please login to access the system</p>
-        </div>
-    """, unsafe_allow_html=True)
-
+    
+    st.markdown("<h1 class='title-text'>SSK ARMS</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 class='subtitle-text'>Room Allocation System</h3>", unsafe_allow_html=True)
+    
     # Login Form
     with st.form("login_form", clear_on_submit=False):
         st.markdown("#### Login Credentials")
@@ -120,7 +134,7 @@ def login_page():
     st.markdown("</div>", unsafe_allow_html=True)
     
     # Add helpful information outside the main container to avoid unnecessary height
-    st.markdown("<div class='login-footer'>", unsafe_allow_html=True)
+    st.markdown("<div class='stAlert'>", unsafe_allow_html=True)
     st.info("🎯 **Authorized Users Only** - Contact system administrator for access")
     st.markdown("</div>", unsafe_allow_html=True)
     
