@@ -23,9 +23,16 @@ AUTHORIZED_USERS = {
 }
 
 def display_logo_login():
-    """Display IOBM logo for login page - this function is now integrated into login_page()"""
-    # This function is no longer needed as the logo display is now handled directly in login_page()
-    pass
+    """Display IOBM logo for login page - centered and smaller"""
+    try:
+        # Centered logo for login page
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.image("iobm.png", width=150)
+    
+    except:
+        # Fallback to centered text if logo is not found
+        st.markdown("<div style='text-align: center;'><h2>IOBM</h2></div>", unsafe_allow_html=True)
 
 def display_logo_main():
     """Display IOBM logo for main app - larger size for header"""
@@ -37,127 +44,94 @@ def display_logo_main():
         st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
 
 def login_page():
-    """Display login page with improved structure"""
-    # Add custom CSS for better spacing and layout
+    """Display a more compact, centered login page"""
     st.markdown("""
-    <style>
-    .login-container {
-        max-width: 400px;
-        margin: 0 auto;
-        padding: 2rem 1rem;
-    }
-    .logo-title-section {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .logo-title-section img {
-        margin-bottom: 0.5rem !important;
-    }
-    .main-title {
-        color: #d32f2f;
-        font-size: 2rem;
-        font-weight: 600;
-        margin: 0.5rem 0 0.3rem 0 !important;
-        line-height: 1.2;
-    }
-    .sub-title {
-        color: #666;
-        font-size: 1.1rem;
-        margin: 0.3rem 0 0.5rem 0 !important;
-        font-weight: 400;
-    }
-    .description-text {
-        color: #888;
-        font-size: 0.9rem;
-        margin: 0.5rem 0 1.5rem 0 !important;
-    }
-    .login-form {
-        background: #f8f9fa;
-        padding: 1.5rem;
-        border-radius: 8px;
-        border: 1px solid #e9ecef;
-    }
-    .form-header {
-        color: #333;
-        font-size: 1.2rem;
-        font-weight: 500;
-        margin-bottom: 1rem !important;
-        text-align: center;
-    }
-    /* Reduce default streamlit spacing */
-    .block-container {
-        padding-top: 2rem !important;
-        padding-bottom: 1rem !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Create centered container
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    with col2:
-        # Logo and title section - tightly grouped
-        st.markdown('<div class="logo-title-section">', unsafe_allow_html=True)
+        <style>
+        .stApp {
+            background-color: #f0f2f6;
+        }
+        .login-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            max-width: 400px;
+            margin: auto;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 10vh; /* Adjust as needed to position vertically */
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .login-form {
+            width: 100%;
+        }
+        .login-footer {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 1rem;
+        }
+        .title-spacing {
+            margin-bottom: -1rem; /* Adjust negative margin to reduce gap */
+        }
+        </style>
+        """, unsafe_allow_html=True)
         
-        # Display logo
-        try:
-            st.image("iobm.png", width=120)
-        except:
-            st.markdown('<div style="background: #f0f0f0; padding: 2rem; border-radius: 8px; text-align: center; margin-bottom: 0.5rem;"><h3>IOBM</h3></div>', unsafe_allow_html=True)
-        
-        # Title and subtitle with minimal spacing
-        st.markdown('<h1 class="main-title">SSK ARMS</h1>', unsafe_allow_html=True)
-        st.markdown('<h3 class="sub-title">Room Allocation System</h3>', unsafe_allow_html=True)
-        st.markdown('<p class="description-text">Please login to access the room allocation system</p>', unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Login form with better styling
-        st.markdown('<div class="login-form">', unsafe_allow_html=True)
-        
-        with st.form("login_form"):
-            st.markdown('<h4 class="form-header">Login Credentials</h4>', unsafe_allow_html=True)
-            
-            username = st.text_input("Username", placeholder="Enter your username", label_visibility="visible")
-            password = st.text_input("Password", type="password", placeholder="Enter your password", label_visibility="visible")
-            
-            # Submit button with full width
-            submit_button = st.form_submit_button("🚪 Login", type="primary", use_container_width=True)
-            
-            if submit_button:
-                if username.lower() in AUTHORIZED_USERS and AUTHORIZED_USERS[username.lower()] == password:
-                    st.session_state.logged_in = True
-                    st.session_state.username = username.lower()
-                    st.success(f"✅ Welcome, {username}!")
-                    st.rerun()
-                else:
-                    st.error("❌ Invalid username or password. Please try again.")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Compact footer information
-    st.markdown("---")
-    
-    # Info and authorized users in a more compact layout
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.info("🎯 **Authorized Users Only**\nContact system administrator for access")
-    
-    with col2:
-        with st.expander("👥 Authorized Users"):
-            st.markdown("""
-            **Contact for credentials:**
-            • Fahad Hassan  
-            • Ali Hasnain  
-            • Habibullah  
-            • Rabiya Sabri
-            """)
+    # Main container for the login page
+    st.markdown("<div class='login-container'>", unsafe_allow_html=True)
 
-def display_logo_login():
-    """Display IOBM logo for login page - this function is now integrated into login_page()"""
-    # This function is no longer needed as the logo display is now handled directly in login_page()
-    pass
+    # Header with logo and title
+    st.markdown("<div class='login-header'>", unsafe_allow_html=True)
+    display_logo_login()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Title with reduced spacing
+    st.markdown("""
+        <div style="text-align: center; padding: 0.5rem;">
+            <h1 class="title-spacing">SSK ARMS</h1>
+            <h3>Room Allocation System</h3>
+            <p style="font-size: 14px; color: #555;">Please login to access the system</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Login Form
+    with st.form("login_form", clear_on_submit=False):
+        st.markdown("#### Login Credentials")
+        username = st.text_input("Username", placeholder="Enter your username")
+        password = st.text_input("Password", type="password", placeholder="Enter your password")
+        st.markdown("<br>", unsafe_allow_html=True)
+        submit_button = st.form_submit_button("🚪 Login", type="primary", use_container_width=True)
+
+        if submit_button:
+            if username.lower() in AUTHORIZED_USERS and AUTHORIZED_USERS[username.lower()] == password:
+                st.session_state.logged_in = True
+                st.session_state.username = username.lower()
+                st.success(f"✅ Welcome, {username}!")
+                st.rerun()
+            else:
+                st.error("❌ Invalid username or password. Please try again.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Add helpful information outside the main container to avoid unnecessary height
+    st.markdown("<div class='login-footer'>", unsafe_allow_html=True)
+    st.info("🎯 **Authorized Users Only** - Contact system administrator for access")
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Display authorized users in an expander for an uncluttered look
+    with st.expander("👥 Authorized Users"):
+        st.markdown("Contact one of these users for login credentials:")
+        st.markdown("• Fahad Hassan")
+        st.markdown("• Ali Hasnain") 
+        st.markdown("• Habibullah")
+        st.markdown("• Rabiya Sabri")
+
 def logout():
     """Handle logout"""
     for key in ['logged_in', 'username']:
