@@ -10,8 +10,8 @@ import plotly.express as px
 
 # Page configuration
 st.set_page_config(
-    page_title="SSK ARMS - Room Allocation System",
-    page_icon="🏫",
+    page_title="SSK ARMS - IOBM",
+    page_icon="https://raw.githubusercontent.com/FahadHassan315/room-allocation-system/main/iobm.png",
     layout="wide"
 )
 
