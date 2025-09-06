@@ -7,9 +7,6 @@ import io
 import random
 import plotly.express as px
 
-with st.sidebar:
-    st.image("https://raw.githubusercontent.com/FahadHassan315/room-allocation-system/main/iobm.png", width=150)
-    st.markdown("---")
 
 # Page configuration
 st.set_page_config(
