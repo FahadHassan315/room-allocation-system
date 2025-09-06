@@ -77,18 +77,6 @@ def login_page():
                     st.rerun()
                 else:
                     st.error("❌ Invalid username or password. Please try again.")
-    
-    # Add some helpful information
-    st.markdown("---")
-    st.info("🎯 **Authorized Users Only** - Contact system administrator for access")
-    
-    # Display authorized users (without passwords for security)
-    with st.expander("👥 Authorized Users"):
-        st.markdown("Contact one of these users for login credentials:")
-        st.markdown("• Fahad Hassan")
-        st.markdown("• Ali Hasnain") 
-        st.markdown("• Habibullah")
-        st.markdown("• Rabiya Sabri")
 
 def logout():
     """Handle logout"""
