@@ -7,6 +7,9 @@ import io
 import random
 import plotly.express as px
 
+# Set the logo
+st.logo("https://raw.githubusercontent.com/FahadHassan315/room-allocation-system/main/iobm.png")
+
 # Page configuration
 st.set_page_config(
     page_title="SSK ARMS - Room Allocation System",
