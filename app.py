@@ -23,9 +23,16 @@ AUTHORIZED_USERS = {
 }
 
 def display_logo_login():
-    """Display IOBM logo for login page - this function is now integrated into login_page()"""
-    # This function is no longer needed as the logo display is now handled directly in login_page()
-    pass
+    """Display IOBM logo for login page - centered and smaller"""
+    try:
+        # Centered logo for login page
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.image("iobm.png", width=150)
+    
+    except:
+        # Fallback to centered text if logo is not found
+        st.markdown("<div style='text-align: center;'><h2>IOBM</h2></div>", unsafe_allow_html=True)
 
 def display_logo_main():
     """Display IOBM logo for main app - larger size for header"""
@@ -37,62 +44,51 @@ def display_logo_main():
         st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
 
 def login_page():
-    """Display login page with improved structure"""
-    # Center the login form
+    """Display login page"""
+    # Center the logo and login form
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Logo section - centered with minimal spacing
-        st.markdown("<div style='text-align: center; margin-bottom: 1rem;'>", unsafe_allow_html=True)
-        try:
-            st.image("iobm.png", width=120)
-        except:
-            st.markdown("<div style='background: #f0f0f0; padding: 1rem; border-radius: 8px; margin: 0 auto; width: 120px;'><h3 style='margin: 0; text-align: center;'>IOBM</h3></div>", unsafe_allow_html=True)
+        # Display centered logo for login page
+        st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+        display_logo_login()
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # Title section - tightly spaced
         st.markdown("""
-        <div style="text-align: center; margin-bottom: 1.5rem;">
-            <h1 style="color: #d32f2f; margin: 0.5rem 0 0.2rem 0; font-size: 2rem;">SSK ARMS</h1>
-            <h3 style="color: #666; margin: 0.2rem 0 0.3rem 0; font-weight: 400;">Room Allocation System</h3>
-            <p style="color: #888; margin: 0.3rem 0 0; font-size: 0.9rem;">Please login to access the room allocation system</p>
+        <div style="text-align: center; padding: 1rem;">
+            <h1>SSK ARMS</h1>
+            <h3>Room Allocation System</h3>
+            <p>Please login to access the room allocation system</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Login form
-        with st.container():
+        # Create login form
+        with st.form("login_form"):
             st.markdown("#### Login Credentials")
+            username = st.text_input("Username", placeholder="Enter your username")
+            password = st.text_input("Password", type="password", placeholder="Enter your password")
+            submit_button = st.form_submit_button("🚪 Login", type="primary")
             
-            with st.form("login_form"):
-                username = st.text_input("Username", placeholder="Enter your username")
-                password = st.text_input("Password", type="password", placeholder="Enter your password")
-                submit_button = st.form_submit_button("🚪 Login", type="primary", use_container_width=True)
-                
-                if submit_button:
-                    if username.lower() in AUTHORIZED_USERS and AUTHORIZED_USERS[username.lower()] == password:
-                        st.session_state.logged_in = True
-                        st.session_state.username = username.lower()
-                        st.success(f"✅ Welcome, {username}!")
-                        st.rerun()
-                    else:
-                        st.error("❌ Invalid username or password. Please try again.")
+            if submit_button:
+                if username.lower() in AUTHORIZED_USERS and AUTHORIZED_USERS[username.lower()] == password:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username.lower()
+                    st.success(f"✅ Welcome, {username}!")
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid username or password. Please try again.")
     
-    # Footer information - more compact
+    # Add some helpful information
     st.markdown("---")
-    col1, col2 = st.columns(2)
+    st.info("🎯 **Authorized Users Only** - Contact system administrator for access")
     
-    with col1:
-        st.info("🎯 **Authorized Users Only**\nContact system administrator for access")
-    
-    with col2:
-        with st.expander("👥 Authorized Users"):
-            st.markdown("""
-            **Contact for credentials:**
-            • Fahad Hassan  
-            • Ali Hasnain  
-            • Habibullah  
-            • Rabiya Sabri
-            """)
+    # Display authorized users (without passwords for security)
+    with st.expander("👥 Authorized Users"):
+        st.markdown("Contact one of these users for login credentials:")
+        st.markdown("• Fahad Hassan")
+        st.markdown("• Ali Hasnain") 
+        st.markdown("• Habibullah")
+        st.markdown("• Rabiya Sabri")
 
 def logout():
     """Handle logout"""
