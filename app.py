@@ -23,61 +23,144 @@ AUTHORIZED_USERS = {
     "rabiyasabri": "iobm4"
 }
 
-def display_logo_login():
-    """Display IOBM logo for login page - centered and smaller"""
-    try:
-        # Centered logo for login page
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col2:
-            st.image("iobm.png", width=150)
-    
-    except:
-        # Fallback to centered text if logo is not found
-        st.markdown("<div style='text-align: center;'><h2>IOBM</h2></div>", unsafe_allow_html=True)
-
 def display_logo_main():
     """Display IOBM logo for main app - larger size for header"""
     try:
-        # Larger logo for main app header
         st.image("iobm.png", width=200)
     except:
-        # Fallback text if logo is not found
         st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
 
 def login_page():
-    """Display login page"""
-    # Center the logo and login form
-    col1, col2, col3 = st.columns([1, 2, 1])
+    """Display horizontal login page with logo/name on left, login on right, credits at bottom"""
     
-    with col2:
-        # Display centered logo for login page
-        st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-        display_logo_login()
-        st.markdown("</div>", unsafe_allow_html=True)
+    # Add custom CSS for full height layout and styling
+    st.markdown("""
+    <style>
+    /* Hide the default Streamlit header and menu */
+    .stApp > header {
+        background-color: transparent;
+    }
+    
+    .main-container {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 20px;
+    }
+    .login-content {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 40px;
+        margin: 20px 0;
+    }
+    .logo-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: center;
+        padding: 20px;
+        margin-top: -100px;
+    }
+    .login-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 40px;
+        margin-top: -50px;
+    }
+    .credits-section {
+        text-align: center;
+        padding: 20px;
+        border-top: 1px solid #e0e0e0;
+        margin-top: auto;
+    }
+    .app-title {
+        font-size: 3rem;
+        font-weight: bold;
+        color: #1f77b4;
+        margin: 20px 0 10px 0;
+    }
+    .app-subtitle {
+        font-size: 1.2rem;
+        color: #666;
+        margin-bottom: 20px;
+    }
+    .login-title {
+        font-size: 1.8rem;
+        color: #333;
+        margin-bottom: 30px;
+        text-align: left;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Create two main columns for horizontal layout
+    col_left, col_right = st.columns([1, 1], gap="large")
+    
+    # Left side - Logo and App Name
+    with col_left:
+        st.markdown('<div class="logo-section">', unsafe_allow_html=True)
         
+        # Display logo - centered
+        col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
+        with col_logo2:
+            try:
+                st.image("iobm.png", width=250)
+            except:
+                st.markdown('<div style="width: 250px; height: 150px; background: #ddd; display: flex; align-items: center; justify-content: center; border-radius: 10px; margin: 0 auto;"><h2>IOBM</h2></div>', unsafe_allow_html=True)
+        
+        # App title and subtitle - properly centered
         st.markdown("""
-        <div style="text-align: center; padding: 1rem;">
-            <h1>SSK ARMS</h1>
-            <h3>Room Allocation System</h3>
-            <p>Please login to access the room allocation system</p>
+        <div style="text-align: center; margin-top: 20px;">
+            <h1 style="font-size: 3rem; font-weight: bold; color: #1f77b4; margin: 0; line-height: 1.2;">IOBM ARMS</h1>
+            <p style="font-size: 1.2rem; color: #666; margin: 10px 0 0 0;">Room Allocation System</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Create login form
-        with st.form("login_form"):
-            st.markdown("#### Login Credentials")
-            username = st.text_input("Username", placeholder="Enter your username")
-            password = st.text_input("Password", type="password", placeholder="Enter your password")
-            submit_button = st.form_submit_button("🚪 Login", type="primary")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Right side - Login Form
+    with col_right:
+        st.markdown('<div class="login-section">', unsafe_allow_html=True)
+        
+        st.markdown('<h2 class="login-title">🔐 Login</h2>', unsafe_allow_html=True)
+        
+        # Login form
+        username = st.text_input("👤 Username", placeholder="Enter your username", key="username_input", label_visibility="collapsed")
+        password = st.text_input("🔒 Password", type="password", placeholder="Enter your password", key="password_input", label_visibility="collapsed")
+        
+        # Add some spacing
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Login button
+        if st.button("🚀 Login", use_container_width=True, type="primary"):
+            username_lower = username.lower()
+            password_lower = password.lower()
             
-            if submit_button:
-                if username.lower() in AUTHORIZED_USERS and AUTHORIZED_USERS[username.lower()] == password:
-                    st.session_state.logged_in = True
-                    st.session_state.username = username.lower()
-                    st.success(f"✅ Welcome, {username}!")
-                    st.rerun()
-                else:
-                    st.error("❌ Invalid username or password. Please try again.")
+            if username_lower in AUTHORIZED_USERS and AUTHORIZED_USERS[username_lower] == password_lower:
+                st.session_state.logged_in = True
+                st.session_state.username = username_lower
+                st.success("✅ Login successful!")
+                st.rerun()
+            else:
+                st.error("❌ Invalid username or password!")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Bottom - Credits section (full width)
+    st.markdown('<div class="credits-section">', unsafe_allow_html=True)
+    st.markdown("""
+    <div style='color: #666; font-size: 14px;'>
+        <p><strong>Development Team:</strong> Fahad Hassan, Ali Hasnain Abro | <strong>Supervisor:</strong> Dr. Rabiya Sabri | <strong>Designer:</strong> Habibullah Rajpar</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def logout():
     """Handle logout"""
@@ -460,7 +543,7 @@ def main_app():
     with col2:
         st.markdown("""
         <div style="padding-top: 40px;">
-            <h1>SSK ARMS</h1>
+            <h1>IOBM ARMS</h1>
             <h3>Room Allocation System</h3>
         </div>
         """, unsafe_allow_html=True)
