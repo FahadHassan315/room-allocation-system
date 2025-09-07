@@ -26,7 +26,7 @@ AUTHORIZED_USERS = {
 def display_logo_main():
     """Display IOBM logo for main app - larger size for header"""
     try:
-        st.image(".png", width=200)
+        st.image("iobm.png", width=200)
     except:
         st.markdown("<h2></h2>", unsafe_allow_html=True)
 
