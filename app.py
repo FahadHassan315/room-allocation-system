@@ -10,7 +10,7 @@ import plotly.express as px
 
 # Page configuration
 st.set_page_config(
-    page_title="SSK ARMS - IOBM",
+    page_title="SSK ARMS",
     page_icon="https://raw.githubusercontent.com/FahadHassan315/room-allocation-system/main/iobm.png",
     layout="wide"
 )
@@ -26,7 +26,7 @@ AUTHORIZED_USERS = {
 def display_logo_main():
     """Display IOBM logo for main app - larger size for header"""
     try:
-        st.image("iobm.png", width=200)
+        st.image(".png", width=200)
     except:
         st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
 
