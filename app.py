@@ -28,7 +28,7 @@ def display_logo_main():
     try:
         st.image(".png", width=200)
     except:
-        st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
+        st.markdown("<h2></h2>", unsafe_allow_html=True)
 
 def login_page():
     """Display horizontal login page with logo/name on left, login on right, credits at bottom"""
