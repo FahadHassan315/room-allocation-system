@@ -28,7 +28,7 @@ def display_logo_main():
     try:
         st.image(".png", width=200)
     except:
-        st.markdown("<h2>SSK</h2>", unsafe_allow_html=True)
+        st.markdown("<h2>IOBM</h2>", unsafe_allow_html=True)
 
 def login_page():
     """Display horizontal login page with logo/name on left, login on right, credits at bottom"""
@@ -113,12 +113,12 @@ def login_page():
             try:
                 st.image("iobm.png", width=250)
             except:
-                st.markdown('<div style="width: 250px; height: 150px; background: #ddd; display: flex; align-items: center; justify-content: center; border-radius: 10px; margin: 0 auto;"><h2>IOBM</h2></div>', unsafe_allow_html=True)
+                st.markdown('<div style="width: 250px; height: 150px; background: #ddd; display: flex; align-items: center; justify-content: center; border-radius: 10px; margin: 0 auto;"><h2>SSK</h2></div>', unsafe_allow_html=True)
         
         # App title and subtitle - properly centered
         st.markdown("""
         <div style="text-align: center; margin-top: 20px;">
-            <h1 style="font-size: 3rem; font-weight: bold; color: #1f77b4; margin: 0; line-height: 1.2;">IOBM ARMS</h1>
+            <h1 style="font-size: 3rem; font-weight: bold; color: #1f77b4; margin: 0; line-height: 1.2;">SSK ARMS</h1>
             <p style="font-size: 1.2rem; color: #666; margin: 10px 0 0 0;">Room Allocation System</p>
         </div>
         """, unsafe_allow_html=True)
