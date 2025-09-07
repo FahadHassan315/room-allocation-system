@@ -543,8 +543,8 @@ def main_app():
     with col2:
         st.markdown("""
         <div style="padding-top: 40px;">
-            <h1>IOBM ARMS</h1>
-            <h3>Room Allocation System</h3>
+            <h1>SSK ARMS</h1>
+            <h3>Academic Room Allocation System</h3>
         </div>
         """, unsafe_allow_html=True)
     
